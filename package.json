@@ -9,7 +9,10 @@
     "node": "hardhat node",
     "deploy:localhost": "hardhat run scripts/deploy.ts --network localhost",
     "deploy:flowTestnet": "hardhat run scripts/deploy.ts --network flowTestnet",
-    "deploy:flowMainnet": "hardhat run scripts/deploy.ts --network flowMainnet"
+    "deploy:flowMainnet": "hardhat run scripts/deploy.ts --network flowMainnet",
+    "deploy:dfs:localhost": "hardhat run scripts/deploy_dfs_escrow_manager.ts --network localhost",
+    "deploy:dfs:testnet": "hardhat run scripts/deploy_dfs_escrow_manager.ts --network flowTestnet",
+    "deploy:dfs:mainnet": "hardhat run scripts/deploy_dfs_escrow_manager.ts --network flowMainnet"
   },
   "keywords": [
     "solidity",

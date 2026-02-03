@@ -28,7 +28,7 @@ It is based on Phase 2 of `aiSports_frontEnd/aiSports/docs/evm_usd_contests_plan
 
 - **PYUSD**
   - **Mainnet PYUSD**: `0x99af3eea856556646c98c8b9b2548fe815240750`
-  - **Testnet PYUSD**: no official deployment (deploy a mock)
+  - **Testnet PYUSD0**: `0xd7d43ab7b365f0d0789aE83F4385fA710FfdC98F` (stand-in token for testing, has mint function and liquidity pool)
 
 - **Yearn VaultFactory**
   - **Flow EVM mainnet (official)**: `0x770D0d1Fb036483Ed4AbB6d53c1C88fb277D812F`
@@ -201,35 +201,29 @@ Recommended: keep the original baseline tests for `EscrowManager.sol` (as regres
 
 ---
 
-## Step 3 — Deploy Mock PYUSD (Flow EVM Testnet)
+## Step 3 — Use Testnet PYUSD0 Contract
 
-Phase 2 requires a testnet PYUSD. There is no official Flow EVM testnet PYUSD, so you must deploy a mock.
+Phase 2 requires a testnet PYUSD. There is now a live testnet PYUSD0 contract available on Flow EVM testnet.
 
-### Option A (recommended for speed): Minimal Mock PYUSD (6 decimals)
+### Testnet PYUSD0 Contract
 
-Create a simple ERC20 mock that:
-- uses **6 decimals**
-- has a `mint(address,uint256)` faucet for testing
+- **Address**: `0xd7d43ab7b365f0d0789aE83F4385fA710FfdC98F`
+- **Purpose**: Stand-in token for testing purposes only
+- **Features**:
+  - Has a `mint()` function for testing
+  - Has a liquidity pool for swapping tokens
+  - Uses 6 decimals (PYUSD standard)
 
-Suggested file:
-- `contracts/mocks/MockPYUSD.sol`
+### Notes
 
-Then add a script:
-- `scripts/deploy_mock_pyusd.ts`
+- Mainnet PYUSD0 requires real PYUSD locked via LayerZero
+- The testnet contract is sufficient for development and testing
+- No deployment needed — use the existing contract address
 
-### Option B (matches Phase 2 text): Deploy Paxos PYUSD source
+### Configuration
 
-Use the Paxos PYUSD implementation as the mock basis and deploy to Flow EVM testnet:
-- Source: `paxosglobal/paxos-token-contracts` → `contracts/stablecoins/PYUSD.sol`
-
-Notes:
-- This contract may have additional roles/initialization requirements.
-- For rapid local/testnet iteration, Option A is usually faster.
-
-### Post-deploy
-
-- Record deployed mock PYUSD address (testnet) for:
-  - deployment scripts
+- Use this address in:
+  - deployment scripts (when creating escrows on testnet)
   - frontend `.env.local` later
   - backend config later
 
@@ -269,7 +263,7 @@ Create an off-chain admin script (Node/Hardhat task or standalone) that calls:
 Recommended parameters for DFS daily contests:
 
 - `token`:
-  - testnet: mock PYUSD address
+  - testnet: `0xd7d43ab7b365f0d0789aE83F4385fA710FfdC98F` (PYUSD0 testnet)
   - mainnet: `0x99af3eea856556646c98c8b9b2548fe815240750`
 - `dues`: `1_000_000` (1 PYUSD with 6 decimals)
 - `endTime`: contest lock timestamp (unix seconds)
@@ -317,15 +311,15 @@ NEXT_PUBLIC_EVM_ESCROW_ADDRESS=0x...
 NEXT_PUBLIC_PYUSD_ADDRESS=0x99af3eea856556646c98c8b9b2548fe815240750
 
 NEXT_PUBLIC_EVM_ESCROW_ADDRESS_TESTNET=0x...
-NEXT_PUBLIC_PYUSD_ADDRESS_TESTNET=0x...
+NEXT_PUBLIC_PYUSD_ADDRESS_TESTNET=0xd7d43ab7b365f0d0789aE83F4385fA710FfdC98F
 ```
 
 ---
 
 ## Step 8 — Verification Checklist (Testnet)
 
-- **Deploy** mock PYUSD
-- **Mint** PYUSD to test account(s)
+- **Obtain** PYUSD0 from testnet contract (`0xd7d43ab7b365f0d0789aE83F4385fA710FfdC98F`)
+  - Use `mint()` function or swap via liquidity pool
 - **Deploy** `DFSEscrowManager`
 - **Create escrow** for a contest day
 - **Join escrow** with:
