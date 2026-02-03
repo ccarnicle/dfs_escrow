@@ -1,0 +1,33 @@
+{
+  "name": "aisports-evm-escrow",
+  "version": "1.0.0",
+  "description": "EVM escrow contract for PYUSD-based DFS contests on Flow EVM",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "node": "hardhat node",
+    "deploy:localhost": "hardhat run scripts/deploy.ts --network localhost",
+    "deploy:flowTestnet": "hardhat run scripts/deploy.ts --network flowTestnet",
+    "deploy:flowMainnet": "hardhat run scripts/deploy.ts --network flowMainnet"
+  },
+  "keywords": [
+    "solidity",
+    "hardhat",
+    "evm",
+    "escrow",
+    "dfs",
+    "flow"
+  ],
+  "author": "aiSports",
+  "license": "MIT",
+  "type": "commonjs",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "dotenv": "^17.2.0",
+    "hardhat": "^2.24.3"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.3.0"
+  }
+}
