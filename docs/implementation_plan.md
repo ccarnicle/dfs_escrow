@@ -260,14 +260,14 @@ Create an off-chain admin script (Node/Hardhat task or standalone) that calls:
 
 - `createEscrow(token, dues, endTime, vaultName, maxParticipants)`
 
-Recommended parameters for DFS daily contests:
+Recommended parameters for DFS daily contests (`paid_pyusd_1`):
 
 - `token`:
   - testnet: `0xd7d43ab7b365f0d0789aE83F4385fA710FfdC98F` (PYUSD0 testnet)
   - mainnet: `0x99af3eea856556646c98c8b9b2548fe815240750`
 - `dues`: `1_000_000` (1 PYUSD with 6 decimals)
 - `endTime`: contest lock timestamp (unix seconds)
-- `vaultName`: e.g. `"PYUSD DFS 012526"`
+- `vaultName`: e.g. `"PYUSD DFS 012526"` (format: `"PYUSD DFS {MMDDYY}"`)
 - `maxParticipants`: interpret as **max total entries**, e.g. `100000`
 
 Output:
@@ -281,6 +281,10 @@ After creating the escrow, store `escrowId` in Firestore so the frontend can loo
 
 - `contests/paid_pyusd_1/{MMDDYY}/meta`
   - field: `escrowId: <number>`
+
+The contest document (`contests/paid_pyusd_1`) should also include:
+- Standard contest fields: `entry_fee`, `total_prizes`, `max_prize`, `winners`
+- Prize config fields: `prize_type="pyusd"`, `prize_label="pyUSD"`, `prize_prefix="$"`, `prize_unit="pyUSD"`, `prize_precision=2`
 
 Also record:
 - `escrowManagerAddress` (per environment)
@@ -307,11 +311,21 @@ MAINNET_PRIVATE_KEY=...
 Later in the frontend `.env.local`, you’ll need:
 
 ```bash
-NEXT_PUBLIC_EVM_ESCROW_ADDRESS=0x...
+# Network selection
+NEXT_PUBLIC_RUN_TESTNET=true  # or false for mainnet
+
+# EVM contracts (Flow EVM)
+NEXT_PUBLIC_EVM_ESCROW_ADDRESS=0x...  # mainnet address
 NEXT_PUBLIC_PYUSD_ADDRESS=0x99af3eea856556646c98c8b9b2548fe815240750
 
-NEXT_PUBLIC_EVM_ESCROW_ADDRESS_TESTNET=0x...
+NEXT_PUBLIC_EVM_ESCROW_ADDRESS_TESTNET=0x3819AC57110F008D491BBBba4fB14EcbFf45E5D0
 NEXT_PUBLIC_PYUSD_ADDRESS_TESTNET=0xd7d43ab7b365f0d0789aE83F4385fA710FfdC98F
+
+# Auth/profile collection (Option A: use dapperAuth even on testnet)
+NEXT_PUBLIC_FIREBASE_AUTH_COLLECTION=dapperAuth
+
+# UI gating (optional, for testnet entry control)
+NEXT_PUBLIC_DISABLED_TESTNET_CONTEST_ENTRY=false
 ```
 
 ---
@@ -320,8 +334,8 @@ NEXT_PUBLIC_PYUSD_ADDRESS_TESTNET=0xd7d43ab7b365f0d0789aE83F4385fA710FfdC98F
 
 - **Obtain** PYUSD0 from testnet contract (`0xd7d43ab7b365f0d0789aE83F4385fA710FfdC98F`)
   - Use `mint()` function or swap via liquidity pool
-- **Deploy** `DFSEscrowManager`
-- **Create escrow** for a contest day
+- **Deploy** `DFSEscrowManager` (testnet address: `0x3819AC57110F008D491BBBba4fB14EcbFf45E5D0`)
+- **Create escrow** for a contest day (`paid_pyusd_1`)
 - **Join escrow** with:
   - 1 entry (sanity)
   - 5 entries in one call
@@ -331,6 +345,7 @@ NEXT_PUBLIC_PYUSD_ADDRESS_TESTNET=0xd7d43ab7b365f0d0789aE83F4385fA710FfdC98F
   - `totalEntries` increments correctly
   - vault receives total assets equal to `dues * totalEntries`
   - `ParticipantJoined` logs include `numEntries`
+- Verify Firestore entry docs include `chain_type="evm"` and `chain_network="flowTestnet"` (per Phase 3 Option A)
 
 ---
 
