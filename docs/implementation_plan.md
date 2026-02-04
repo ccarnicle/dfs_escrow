@@ -65,7 +65,7 @@ These are addressed below in the contract change checklist.
 
 ---
 
-## Step 1 — Create DFS Contract Variant
+## Step 1 — Create DFS Contract Variant (COMPLETE)
 
 ### 1.1 Create new contract file
 
@@ -92,7 +92,7 @@ Update the following constants in the DFS variant:
   - From: `1 days`
   - To: `1 hours`
 
-### 1.3 Add multi-entry state
+### 1.3 Add multi-entry state 
 
 Add to the DFS contract:
 
@@ -174,7 +174,7 @@ Add:
 
 ---
 
-## Step 2 — Update Tests for DFS Semantics
+## Step 2 — Update Tests for DFS Semantics (COMPLETE)
 
 The baseline tests in `test/EscrowManager.ts` assume:
 - organizer auto-joins in `createEscrow()`
@@ -201,7 +201,7 @@ Recommended: keep the original baseline tests for `EscrowManager.sol` (as regres
 
 ---
 
-## Step 3 — Use Testnet PYUSD0 Contract
+## Step 3 — Use Testnet PYUSD0 Contract (COMPLETE)
 
 Phase 2 requires a testnet PYUSD. There is now a live testnet PYUSD0 contract available on Flow EVM testnet.
 
@@ -231,7 +231,7 @@ Phase 2 requires a testnet PYUSD. There is now a live testnet PYUSD0 contract av
 
 ## Step 4 — Deploy `DFSEscrowManager`
 
-### 4.1 Testnet deployment (recommended first)
+### 4.1 Testnet deployment (COMPLETE)
 
 On Flow EVM testnet:
 - Deploy `MockVaultFactory` (already handled by the baseline `scripts/deploy.ts` pattern)
