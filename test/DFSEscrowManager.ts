@@ -22,6 +22,9 @@ describe("DFSEscrowManager", function () {
         const DFSEscrowManager = await ethers.getContractFactory("DFSEscrowManager");
         const dfsEscrowManager = await DFSEscrowManager.deploy(mockFactoryAddress);
 
+        // Authorize the organizer to create escrows (owner is auto-authorized in constructor)
+        await dfsEscrowManager.connect(owner).addAuthorizedCreator(organizer.address);
+
         return {
             dfsEscrowManager,
             mockToken,
@@ -36,11 +39,13 @@ describe("DFSEscrowManager", function () {
 
     describe("Deployment", function () {
         it("Should deploy with the correct initial state", async function () {
-            const { dfsEscrowManager, mockVaultFactory } = await loadFixture(deployDFSEscrowManagerFixture);
+            const { dfsEscrowManager, mockVaultFactory, owner } = await loadFixture(deployDFSEscrowManagerFixture);
             const factoryAddress = await mockVaultFactory.getAddress();
             expect(await dfsEscrowManager.yearnVaultFactory()).to.equal(factoryAddress);
-            expect(await dfsEscrowManager.nextEscrowId()).to.equal(0);
+            expect(await dfsEscrowManager.nextEscrowId()).to.equal(1);
             expect(await dfsEscrowManager.maxEntriesPerUser()).to.equal(1000);
+            // Owner should be auto-authorized
+            expect(await dfsEscrowManager.isAuthorizedCreator(owner.address)).to.be.true;
         });
     });
 
@@ -80,18 +85,18 @@ describe("DFSEscrowManager", function () {
             expect(await mockVault.depositLimit()).to.equal(ethers.MaxUint256);
 
             // Check the details of the created escrow
-            const details = await dfsEscrowManager.getEscrowDetails(0);
+            const details = await dfsEscrowManager.getEscrowDetails(1);
             expect(details.organizer).to.equal(organizer.address);
             expect(details.token).to.equal(tokenAddress);
             expect(details.dues).to.equal(dues);
             expect(details.leagueName).to.equal("Test Vault");
 
             // Check tracking arrays
-            expect(await dfsEscrowManager.getCreatedEscrows(organizer.address)).to.deep.equal([0n]);
-            expect(await dfsEscrowManager.getActiveEscrowIds()).to.deep.equal([0n]);
+            expect(await dfsEscrowManager.getCreatedEscrows(organizer.address)).to.deep.equal([1n]);
+            expect(await dfsEscrowManager.getActiveEscrowIds()).to.deep.equal([1n]);
             
             // Verify organizer did NOT auto-join
-            expect(await dfsEscrowManager.getParticipants(0)).to.be.empty;
+            expect(await dfsEscrowManager.getParticipants(1)).to.be.empty;
             expect(await dfsEscrowManager.getJoinedEscrows(organizer.address)).to.be.empty; // Organizer didn't join, only created
         });
 
@@ -108,12 +113,12 @@ describe("DFSEscrowManager", function () {
                 5
             );
 
-            const details = await dfsEscrowManager.getEscrowDetails(0);
+            const details = await dfsEscrowManager.getEscrowDetails(1);
             const vault = await ethers.getContractAt("MockYearnVault", details.yearnVault);
 
             // Verify no funds were deposited (organizer didn't join)
             expect(await vault.balanceOf(await dfsEscrowManager.getAddress())).to.equal(0);
-            expect(await dfsEscrowManager.getParticipants(0)).to.be.empty;
+            expect(await dfsEscrowManager.getParticipants(1)).to.be.empty;
             expect(await dfsEscrowManager.getJoinedEscrows(organizer.address)).to.be.empty; // Organizer didn't join, only created
             expect(details.leagueName).to.equal("Join Vault");
         });
@@ -188,7 +193,7 @@ describe("DFSEscrowManager", function () {
                 3
             );
 
-            const details = await dfsEscrowManager.getEscrowDetails(0);
+            const details = await dfsEscrowManager.getEscrowDetails(1);
             const vault = await ethers.getContractAt("MockYearnVault", details.yearnVault) as MockYearnVault;
             expect(await vault.symbol()).to.equal("FV");
         });
@@ -212,12 +217,12 @@ describe("DFSEscrowManager", function () {
             await mockToken.mint(participant1.address, dues);
             await mockToken.connect(participant1).approve(await dfsEscrowManager.getAddress(), dues);
 
-            await expect(dfsEscrowManager.connect(participant1).joinEscrow(0, 1))
+            await expect(dfsEscrowManager.connect(participant1).joinEscrow(1, 1))
                 .to.emit(dfsEscrowManager, "ParticipantJoined")
-                .withArgs(0, participant1.address, 1);
+                .withArgs(1, participant1.address, 1);
             
             // Get the vault contract to check balances
-            const details = await dfsEscrowManager.getEscrowDetails(0);
+            const details = await dfsEscrowManager.getEscrowDetails(1);
             const vault = await ethers.getContractAt("MockYearnVault", details.yearnVault);
 
             // Verify the underlying assets were transferred to the vault
@@ -229,12 +234,12 @@ describe("DFSEscrowManager", function () {
             expect(await vault.balanceOf(participant1.address)).to.equal(0);
 
             // Verify tracking arrays
-            expect(await dfsEscrowManager.getJoinedEscrows(participant1.address)).to.deep.equal([0n]);
-            expect(await dfsEscrowManager.getParticipants(0)).to.deep.equal([participant1.address]);
+            expect(await dfsEscrowManager.getJoinedEscrows(participant1.address)).to.deep.equal([1n]);
+            expect(await dfsEscrowManager.getParticipants(1)).to.deep.equal([participant1.address]);
             
             // Verify entry counts
-            expect(await dfsEscrowManager.userEntryCount(0, participant1.address)).to.equal(1);
-            expect(await dfsEscrowManager.getTotalEntries(0)).to.equal(1);
+            expect(await dfsEscrowManager.userEntryCount(1, participant1.address)).to.equal(1);
+            expect(await dfsEscrowManager.getTotalEntries(1)).to.equal(1);
         });
 
         it("Should allow a participant to join with multiple entries in one call", async function () {
@@ -254,16 +259,16 @@ describe("DFSEscrowManager", function () {
             await mockToken.mint(participant1.address, totalDues);
             await mockToken.connect(participant1).approve(await dfsEscrowManager.getAddress(), totalDues);
 
-            await expect(dfsEscrowManager.connect(participant1).joinEscrow(0, numEntries))
+            await expect(dfsEscrowManager.connect(participant1).joinEscrow(1, numEntries))
                 .to.emit(dfsEscrowManager, "ParticipantJoined")
-                .withArgs(0, participant1.address, numEntries);
+                .withArgs(1, participant1.address, numEntries);
 
             // Verify entry counts
-            expect(await dfsEscrowManager.userEntryCount(0, participant1.address)).to.equal(numEntries);
-            expect(await dfsEscrowManager.getTotalEntries(0)).to.equal(numEntries);
+            expect(await dfsEscrowManager.userEntryCount(1, participant1.address)).to.equal(numEntries);
+            expect(await dfsEscrowManager.getTotalEntries(1)).to.equal(numEntries);
             
             // Verify vault balance
-            const details = await dfsEscrowManager.getEscrowDetails(0);
+            const details = await dfsEscrowManager.getEscrowDetails(1);
             expect(await mockToken.balanceOf(details.yearnVault)).to.equal(totalDues);
         });
 
@@ -282,22 +287,22 @@ describe("DFSEscrowManager", function () {
             // First join with 3 entries
             await mockToken.mint(participant1.address, dues * 3n);
             await mockToken.connect(participant1).approve(await dfsEscrowManager.getAddress(), dues * 3n);
-            await dfsEscrowManager.connect(participant1).joinEscrow(0, 3);
+            await dfsEscrowManager.connect(participant1).joinEscrow(1, 3);
             
-            expect(await dfsEscrowManager.userEntryCount(0, participant1.address)).to.equal(3);
-            expect(await dfsEscrowManager.getTotalEntries(0)).to.equal(3);
+            expect(await dfsEscrowManager.userEntryCount(1, participant1.address)).to.equal(3);
+            expect(await dfsEscrowManager.getTotalEntries(1)).to.equal(3);
 
             // Add 2 more entries
             await mockToken.mint(participant1.address, dues * 2n);
             await mockToken.connect(participant1).approve(await dfsEscrowManager.getAddress(), dues * 2n);
-            await dfsEscrowManager.connect(participant1).joinEscrow(0, 2);
+            await dfsEscrowManager.connect(participant1).joinEscrow(1, 2);
             
             // Verify cumulative entry counts
-            expect(await dfsEscrowManager.userEntryCount(0, participant1.address)).to.equal(5);
-            expect(await dfsEscrowManager.getTotalEntries(0)).to.equal(5);
+            expect(await dfsEscrowManager.userEntryCount(1, participant1.address)).to.equal(5);
+            expect(await dfsEscrowManager.getTotalEntries(1)).to.equal(5);
             
             // Participant should only appear once in participantsList
-            expect(await dfsEscrowManager.getParticipants(0)).to.deep.equal([participant1.address]);
+            expect(await dfsEscrowManager.getParticipants(1)).to.deep.equal([participant1.address]);
         });
 
         it("Should revert if the pool is full (totalEntries >= maxParticipants)", async function () {
@@ -316,12 +321,12 @@ describe("DFSEscrowManager", function () {
             // P1 joins with maxEntries
             await mockToken.mint(participant1.address, dues * maxEntries);
             await mockToken.connect(participant1).approve(await dfsEscrowManager.getAddress(), dues * maxEntries);
-            await dfsEscrowManager.connect(participant1).joinEscrow(0, maxEntries);
+            await dfsEscrowManager.connect(participant1).joinEscrow(1, maxEntries);
 
             // P2 tries to join (should fail as totalEntries would exceed maxParticipants)
             await mockToken.mint(participant2.address, dues);
             await mockToken.connect(participant2).approve(await dfsEscrowManager.getAddress(), dues);
-            await expect(dfsEscrowManager.connect(participant2).joinEscrow(0, 1))
+            await expect(dfsEscrowManager.connect(participant2).joinEscrow(1, 1))
                 .to.be.revertedWithCustomError(dfsEscrowManager, "ExceedsMaxParticipants");
         });
 
@@ -343,7 +348,7 @@ describe("DFSEscrowManager", function () {
             await mockToken.mint(participant1.address, dues * tooManyEntries);
             await mockToken.connect(participant1).approve(await dfsEscrowManager.getAddress(), dues * tooManyEntries);
             
-            await expect(dfsEscrowManager.connect(participant1).joinEscrow(0, tooManyEntries))
+            await expect(dfsEscrowManager.connect(participant1).joinEscrow(1, tooManyEntries))
                 .to.be.revertedWithCustomError(dfsEscrowManager, "ExceedsMaxEntriesPerUser");
         });
 
@@ -362,7 +367,7 @@ describe("DFSEscrowManager", function () {
             await mockToken.mint(participant1.address, dues);
             await mockToken.connect(participant1).approve(await dfsEscrowManager.getAddress(), dues);
             
-            await expect(dfsEscrowManager.connect(participant1).joinEscrow(0, 0))
+            await expect(dfsEscrowManager.connect(participant1).joinEscrow(1, 0))
                 .to.be.revertedWithCustomError(dfsEscrowManager, "InvalidAmount");
         });
 
@@ -384,7 +389,7 @@ describe("DFSEscrowManager", function () {
             await mockToken.connect(participant1).approve(await dfsEscrowManager.getAddress(), dues);
 
             await expect(
-                dfsEscrowManager.connect(participant1).joinEscrow(0, 1)
+                dfsEscrowManager.connect(participant1).joinEscrow(1, 1)
             ).to.be.revertedWithCustomError(dfsEscrowManager, "EscrowEnded");
         });
     });
@@ -406,20 +411,20 @@ describe("DFSEscrowManager", function () {
             await mockToken.mint(contributor.address, contribution);
             await mockToken.connect(contributor).approve(await dfsEscrowManager.getAddress(), contribution);
 
-            await expect(dfsEscrowManager.connect(contributor).addToPool(0, contribution))
-                .to.emit(dfsEscrowManager, "PoolFunded").withArgs(0, contributor.address, contribution);
+            await expect(dfsEscrowManager.connect(contributor).addToPool(1, contribution))
+                .to.emit(dfsEscrowManager, "PoolFunded").withArgs(1, contributor.address, contribution);
 
-            const details = await dfsEscrowManager.getEscrowDetails(0);
+            const details = await dfsEscrowManager.getEscrowDetails(1);
             const vault = await ethers.getContractAt("MockYearnVault", details.yearnVault);
 
             // Only contribution should be in vault (organizer didn't auto-join)
             expect(await mockToken.balanceOf(details.yearnVault)).to.equal(contribution);
-            expect((await dfsEscrowManager.getParticipants(0)).length).to.equal(0); // No participants yet
+            expect((await dfsEscrowManager.getParticipants(1)).length).to.equal(0); // No participants yet
         });
 
         it("Should revert if amount is zero", async function () {
             const { dfsEscrowManager, contributor } = await loadFixture(deployDFSEscrowManagerFixture);
-            await expect(dfsEscrowManager.connect(contributor).addToPool(0, 0))
+            await expect(dfsEscrowManager.connect(contributor).addToPool(1, 0))
                 .to.be.revertedWithCustomError(dfsEscrowManager, "InvalidAmount");
         });
     });
@@ -444,7 +449,7 @@ describe("DFSEscrowManager", function () {
 
             await mockToken.mint(participant1.address, dues);
             await mockToken.connect(participant1).approve(await dfsEscrowManager.getAddress(), dues);
-            await dfsEscrowManager.connect(participant1).joinEscrow(0, 1);
+            await dfsEscrowManager.connect(participant1).joinEscrow(1, 1);
             
             return { dfsEscrowManager, mockToken, organizer, participant1, participant2, dues, endTime };
         }
@@ -461,7 +466,7 @@ describe("DFSEscrowManager", function () {
                 "Escrow2", 
                 2
             );
-            expect(await dfsEscrowManager.getActiveEscrowIds()).to.deep.equal([0n, 1n]);
+            expect(await dfsEscrowManager.getActiveEscrowIds()).to.deep.equal([1n, 2n]);
 
             await time.increaseTo(endTime + 1);
 
@@ -471,32 +476,32 @@ describe("DFSEscrowManager", function () {
 
             const p1_initialBalance = await mockToken.balanceOf(participant1.address);
 
-            // Test removal of the first element (escrowId 0)
-            const tx = await dfsEscrowManager.connect(organizer).distributeWinnings(0, winners, amounts);
+            // Test removal of the first element (escrowId 1)
+            const tx = await dfsEscrowManager.connect(organizer).distributeWinnings(1, winners, amounts);
             const receipt = await tx.wait();
             const eventLog = receipt?.logs?.find(
                 (log: any) => log.fragment && log.fragment.name === 'WinningsDistributed'
             ) as EventLog | undefined;
             expect(eventLog).to.not.be.undefined;
             if (!eventLog) throw new Error("WinningsDistributed event not found");
-            expect(eventLog.args.escrowId).to.equal(0);
+            expect(eventLog.args.escrowId).to.equal(1);
             expect(eventLog.args.winners).to.deep.equal(winners);
             expect(eventLog.args.amounts.map((a: any) => a)).to.deep.equal(amounts);
 
             expect(await mockToken.balanceOf(participant1.address)).to.equal(p1_initialBalance + dues);
             
-            const details0 = await dfsEscrowManager.getEscrowDetails(0);
-            expect(await mockToken.balanceOf(details0.yearnVault)).to.equal(0);
+            const details1 = await dfsEscrowManager.getEscrowDetails(1);
+            expect(await mockToken.balanceOf(details1.yearnVault)).to.equal(0);
             
-            const newDetails0 = await dfsEscrowManager.getEscrowDetails(0);
-            expect(newDetails0.payoutsComplete).to.be.true;
+            const newDetails1 = await dfsEscrowManager.getEscrowDetails(1);
+            expect(newDetails1.payoutsComplete).to.be.true;
 
-            // Verify escrow 0 was removed and escrow 1 remains at index 0
-            expect(await dfsEscrowManager.getActiveEscrowIds()).to.deep.equal([1n]);
+            // Verify escrow 1 was removed and escrow 2 remains at index 0
+            expect(await dfsEscrowManager.getActiveEscrowIds()).to.deep.equal([2n]);
 
-            // Now, check that the index of the moved escrow (escrowId 1) was updated
-            const escrow1Data = await dfsEscrowManager.escrows(1);
-            expect(escrow1Data.activeArrayIndex).to.equal(0);
+            // Now, check that the index of the moved escrow (escrowId 2) was updated
+            const escrow2Data = await dfsEscrowManager.escrows(2);
+            expect(escrow2Data.activeArrayIndex).to.equal(0);
         });
 
         it("Should correctly distribute remainder to the last winner with slippage", async function () {
@@ -504,7 +509,7 @@ describe("DFSEscrowManager", function () {
             
             await time.increaseTo(endTime + 1);
 
-            const details = await dfsEscrowManager.getEscrowDetails(0);
+            const details = await dfsEscrowManager.getEscrowDetails(1);
             const vault = await ethers.getContractAt("MockYearnVault", details.yearnVault);
 
             // Simulate 1% slippage on withdrawal (100 bps)
@@ -518,7 +523,7 @@ describe("DFSEscrowManager", function () {
 
             const p1_initial = await mockToken.balanceOf(participant1.address);
 
-            await dfsEscrowManager.connect(organizer).distributeWinnings(0, winners, amounts);
+            await dfsEscrowManager.connect(organizer).distributeWinnings(1, winners, amounts);
             
             // Participant1 (the last winner) should receive the remainder accounting for slippage
             expect(await mockToken.balanceOf(participant1.address)).to.equal(p1_initial + expectedWithdrawn);
@@ -536,12 +541,12 @@ describe("DFSEscrowManager", function () {
             
             // Payout is too low (more than 3% below vault balance)
             const lowAmount = (totalInVault * 96n) / 100n;
-            await expect(dfsEscrowManager.connect(organizer).distributeWinnings(0, [participant1.address], [lowAmount]))
+            await expect(dfsEscrowManager.connect(organizer).distributeWinnings(1, [participant1.address], [lowAmount]))
                 .to.be.revertedWithCustomError(dfsEscrowManager, "PayoutExceedsTolerance");
 
             // Payout is too high (more than 3% above vault balance)
             const highAmount = (totalInVault * 104n) / 100n;
-            await expect(dfsEscrowManager.connect(organizer).distributeWinnings(0, [participant1.address], [highAmount]))
+            await expect(dfsEscrowManager.connect(organizer).distributeWinnings(1, [participant1.address], [highAmount]))
                 .to.be.revertedWithCustomError(dfsEscrowManager, "PayoutExceedsTolerance");
         });
 
@@ -551,7 +556,7 @@ describe("DFSEscrowManager", function () {
             await time.increaseTo(endTime + 1);
 
             // The pool has funds from participant1
-            await expect(dfsEscrowManager.connect(organizer).distributeWinnings(0, [], []))
+            await expect(dfsEscrowManager.connect(organizer).distributeWinnings(1, [], []))
                 .to.be.revertedWithCustomError(dfsEscrowManager, "CannotClosePoolWithFunds");
         });
 
@@ -561,11 +566,11 @@ describe("DFSEscrowManager", function () {
             await time.increaseTo(endTime + 1);
             
             // Mismatched lengths
-            await expect(dfsEscrowManager.connect(organizer).distributeWinnings(0, [participant1.address], [dues, dues]))
+            await expect(dfsEscrowManager.connect(organizer).distributeWinnings(1, [participant1.address], [dues, dues]))
                 .to.be.revertedWithCustomError(dfsEscrowManager, "PayoutArraysMismatch");
 
             // Duplicate winners
-            await expect(dfsEscrowManager.connect(organizer).distributeWinnings(0, [participant1.address, participant1.address], [dues, dues]))
+            await expect(dfsEscrowManager.connect(organizer).distributeWinnings(1, [participant1.address, participant1.address], [dues, dues]))
                 .to.be.revertedWithCustomError(dfsEscrowManager, "NoDuplicateWinners");
         });
 
@@ -574,7 +579,7 @@ describe("DFSEscrowManager", function () {
 
             await time.increaseTo(endTime + 1);
 
-            await expect(dfsEscrowManager.connect(participant1).distributeWinnings(0, [], []))
+            await expect(dfsEscrowManager.connect(participant1).distributeWinnings(1, [], []))
                 .to.be.revertedWithCustomError(dfsEscrowManager, "NotOrganizer");
         });
 
@@ -583,7 +588,7 @@ describe("DFSEscrowManager", function () {
 
             await time.increaseTo(endTime + 1);
             await expect(
-                dfsEscrowManager.connect(organizer).distributeWinnings(0, [participant2.address], [dues])
+                dfsEscrowManager.connect(organizer).distributeWinnings(1, [participant2.address], [dues])
             ).to.be.revertedWithCustomError(dfsEscrowManager, "WinnerNotParticipant");
         });
 
@@ -594,7 +599,7 @@ describe("DFSEscrowManager", function () {
             const winners = Array(101).fill(participant1.address); // MAX_RECIPIENTS is 100
             const amounts = Array(101).fill(1n);
             await expect(
-                dfsEscrowManager.connect(organizer).distributeWinnings(0, winners, amounts)
+                dfsEscrowManager.connect(organizer).distributeWinnings(1, winners, amounts)
             ).to.be.revertedWithCustomError(dfsEscrowManager, "TooManyRecipients");
         });
 
@@ -602,7 +607,7 @@ describe("DFSEscrowManager", function () {
             const { dfsEscrowManager, organizer, participant1, dues } = await loadFixture(setupJoinedEscrow);
 
             await expect(
-                dfsEscrowManager.connect(organizer).distributeWinnings(0, [participant1.address], [dues])
+                dfsEscrowManager.connect(organizer).distributeWinnings(1, [participant1.address], [dues])
             ).to.be.revertedWithCustomError(dfsEscrowManager, "EscrowNotEnded");
         });
 
@@ -610,9 +615,9 @@ describe("DFSEscrowManager", function () {
             const { dfsEscrowManager, organizer, participant1, dues, endTime } = await loadFixture(setupJoinedEscrow);
 
             await time.increaseTo(endTime + 1);
-            await dfsEscrowManager.connect(organizer).distributeWinnings(0, [participant1.address], [dues]);
+            await dfsEscrowManager.connect(organizer).distributeWinnings(1, [participant1.address], [dues]);
             await expect(
-                dfsEscrowManager.connect(organizer).distributeWinnings(0, [participant1.address], [dues])
+                dfsEscrowManager.connect(organizer).distributeWinnings(1, [participant1.address], [dues])
             ).to.be.revertedWithCustomError(dfsEscrowManager, "PayoutsAlreadyComplete");
         });
     });
@@ -648,6 +653,95 @@ describe("DFSEscrowManager", function () {
         });
     });
 
+    describe("Authorized Creators Whitelist", function () {
+        it("Should allow owner to add authorized creators", async function () {
+            const { dfsEscrowManager, owner, participant1 } = await loadFixture(deployDFSEscrowManagerFixture);
+            
+            expect(await dfsEscrowManager.isAuthorizedCreator(participant1.address)).to.be.false;
+            
+            await expect(dfsEscrowManager.connect(owner).addAuthorizedCreator(participant1.address))
+                .to.emit(dfsEscrowManager, "AuthorizedCreatorAdded")
+                .withArgs(participant1.address);
+            
+            expect(await dfsEscrowManager.isAuthorizedCreator(participant1.address)).to.be.true;
+        });
+
+        it("Should allow owner to remove authorized creators", async function () {
+            const { dfsEscrowManager, owner, organizer } = await loadFixture(deployDFSEscrowManagerFixture);
+            
+            // Organizer is authorized in fixture
+            expect(await dfsEscrowManager.isAuthorizedCreator(organizer.address)).to.be.true;
+            
+            await expect(dfsEscrowManager.connect(owner).removeAuthorizedCreator(organizer.address))
+                .to.emit(dfsEscrowManager, "AuthorizedCreatorRemoved")
+                .withArgs(organizer.address);
+            
+            expect(await dfsEscrowManager.isAuthorizedCreator(organizer.address)).to.be.false;
+        });
+
+        it("Should revert if non-owner tries to add authorized creator", async function () {
+            const { dfsEscrowManager, organizer, participant1 } = await loadFixture(deployDFSEscrowManagerFixture);
+            
+            await expect(
+                dfsEscrowManager.connect(organizer).addAuthorizedCreator(participant1.address)
+            ).to.be.revertedWithCustomError(dfsEscrowManager, "OwnableUnauthorizedAccount");
+        });
+
+        it("Should revert if non-owner tries to remove authorized creator", async function () {
+            const { dfsEscrowManager, organizer } = await loadFixture(deployDFSEscrowManagerFixture);
+            
+            await expect(
+                dfsEscrowManager.connect(organizer).removeAuthorizedCreator(organizer.address)
+            ).to.be.revertedWithCustomError(dfsEscrowManager, "OwnableUnauthorizedAccount");
+        });
+
+        it("Should revert if trying to add zero address", async function () {
+            const { dfsEscrowManager, owner } = await loadFixture(deployDFSEscrowManagerFixture);
+            
+            await expect(
+                dfsEscrowManager.connect(owner).addAuthorizedCreator(ethers.ZeroAddress)
+            ).to.be.revertedWithCustomError(dfsEscrowManager, "InvalidToken");
+        });
+
+        it("Should prevent unauthorized addresses from creating escrows", async function () {
+            const { dfsEscrowManager, mockToken, participant1 } = await loadFixture(deployDFSEscrowManagerFixture);
+            const dues = ethers.parseUnits("1", 6);
+            const endTime = (await time.latest()) + (2 * 24 * 3600);
+            
+            // Remove participant1 from whitelist if it was added (it shouldn't be)
+            expect(await dfsEscrowManager.isAuthorizedCreator(participant1.address)).to.be.false;
+            
+            await expect(
+                dfsEscrowManager.connect(participant1).createEscrow(
+                    await mockToken.getAddress(),
+                    dues,
+                    endTime,
+                    "Unauthorized Vault",
+                    10
+                )
+            ).to.be.revertedWithCustomError(dfsEscrowManager, "NotAuthorizedCreator");
+        });
+
+        it("Should allow authorized addresses to create escrows", async function () {
+            const { dfsEscrowManager, mockToken, owner } = await loadFixture(deployDFSEscrowManagerFixture);
+            const dues = ethers.parseUnits("1", 6);
+            const endTime = (await time.latest()) + (2 * 24 * 3600);
+            
+            // Owner is auto-authorized
+            expect(await dfsEscrowManager.isAuthorizedCreator(owner.address)).to.be.true;
+            
+            await expect(
+                dfsEscrowManager.connect(owner).createEscrow(
+                    await mockToken.getAddress(),
+                    dues,
+                    endTime,
+                    "Authorized Vault",
+                    10
+                )
+            ).to.emit(dfsEscrowManager, "EscrowCreated");
+        });
+    });
+
     describe("View Functions", function() {
         it("Should return correct data throughout the escrow lifecycle", async function() {
             const { dfsEscrowManager, mockToken, organizer, participant1, participant2 } = await loadFixture(deployDFSEscrowManagerFixture);
@@ -667,23 +761,23 @@ describe("DFSEscrowManager", function () {
                 3
             );
 
-            expect(await dfsEscrowManager.getCreatedEscrows(organizer.address)).to.deep.equal([0n]);
+            expect(await dfsEscrowManager.getCreatedEscrows(organizer.address)).to.deep.equal([1n]);
             expect(await dfsEscrowManager.getJoinedEscrows(organizer.address)).to.be.empty; // Organizer didn't join
-            expect(await dfsEscrowManager.getParticipants(0)).to.be.empty; // No participants yet
-            expect(await dfsEscrowManager.getActiveEscrowIds()).to.deep.equal([0n]);
-            const details = await dfsEscrowManager.getEscrowDetails(0);
+            expect(await dfsEscrowManager.getParticipants(1)).to.be.empty; // No participants yet
+            expect(await dfsEscrowManager.getActiveEscrowIds()).to.deep.equal([1n]);
+            const details = await dfsEscrowManager.getEscrowDetails(1);
             expect(details.leagueName).to.equal("V");
 
             // 3. P1 Joins with 2 entries
             await mockToken.mint(participant1.address, dues * 2n);
             await mockToken.connect(participant1).approve(await dfsEscrowManager.getAddress(), dues * 2n);
-            await dfsEscrowManager.connect(participant1).joinEscrow(0, 2);
+            await dfsEscrowManager.connect(participant1).joinEscrow(1, 2);
 
-            expect(await dfsEscrowManager.getJoinedEscrows(participant1.address)).to.deep.equal([0n]);
-            expect(await dfsEscrowManager.getParticipants(0)).to.deep.equal([participant1.address]);
+            expect(await dfsEscrowManager.getJoinedEscrows(participant1.address)).to.deep.equal([1n]);
+            expect(await dfsEscrowManager.getParticipants(1)).to.deep.equal([participant1.address]);
             expect(await dfsEscrowManager.getCreatedEscrows(participant1.address)).to.be.empty; // P1 didn't create it
-            expect(await dfsEscrowManager.userEntryCount(0, participant1.address)).to.equal(2);
-            expect(await dfsEscrowManager.getTotalEntries(0)).to.equal(2);
+            expect(await dfsEscrowManager.userEntryCount(1, participant1.address)).to.equal(2);
+            expect(await dfsEscrowManager.getTotalEntries(1)).to.equal(2);
         });
 
         it("Should return correct user entry count", async function () {
@@ -699,14 +793,14 @@ describe("DFSEscrowManager", function () {
             );
 
             // User hasn't joined yet
-            expect(await dfsEscrowManager.getUserEntryCount(0, participant1.address)).to.equal(0);
+            expect(await dfsEscrowManager.getUserEntryCount(1, participant1.address)).to.equal(0);
 
             // Join with 3 entries
             await mockToken.mint(participant1.address, dues * 3n);
             await mockToken.connect(participant1).approve(await dfsEscrowManager.getAddress(), dues * 3n);
-            await dfsEscrowManager.connect(participant1).joinEscrow(0, 3);
+            await dfsEscrowManager.connect(participant1).joinEscrow(1, 3);
 
-            expect(await dfsEscrowManager.getUserEntryCount(0, participant1.address)).to.equal(3);
+            expect(await dfsEscrowManager.getUserEntryCount(1, participant1.address)).to.equal(3);
         });
     });
 });

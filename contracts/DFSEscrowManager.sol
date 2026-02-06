@@ -40,6 +40,9 @@ contract DFSEscrowManager is ReentrancyGuard, Ownable {
     // Multi-entry configuration
     uint256 public maxEntriesPerUser = 1000; // Admin-settable max entries per user per escrow
 
+    // Authorized creators whitelist
+    mapping(address => bool) public authorizedCreators;
+
     // User-centric tracking
     mapping(address => uint256[]) public createdEscrows;
     mapping(address => uint256[]) public joinedEscrows;
@@ -82,6 +85,9 @@ contract DFSEscrowManager is ReentrancyGuard, Ownable {
     event PoolFunded(uint256 indexed escrowId, address indexed contributor, uint256 amount);
     
     event MaxEntriesPerUserUpdated(uint256 newMaxEntriesPerUser);
+    
+    event AuthorizedCreatorAdded(address indexed creator);
+    event AuthorizedCreatorRemoved(address indexed creator);
 
     // --- Errors ---
     error InvalidToken();
@@ -106,10 +112,26 @@ contract DFSEscrowManager is ReentrancyGuard, Ownable {
     error InvalidMaxEntries();
     error ExceedsMaxEntriesPerUser();
     error ExceedsMaxParticipants();
+    error NotAuthorizedCreator();
 
     // --- Constructor ---
     constructor(address _yearnVaultFactory) Ownable(msg.sender) {
         yearnVaultFactory = _yearnVaultFactory;
+        // Auto-authorize the owner to create escrows
+        authorizedCreators[msg.sender] = true;
+        emit AuthorizedCreatorAdded(msg.sender);
+        // Initialize nextEscrowId to 1 so escrow IDs start at 1
+        nextEscrowId = 1;
+    }
+
+    // --- Modifiers ---
+    
+    /**
+     * @notice Modifier to ensure only authorized creators can create escrows.
+     */
+    modifier onlyAuthorizedCreator() {
+        if (!authorizedCreators[msg.sender]) revert NotAuthorizedCreator();
+        _;
     }
 
     // --- External Functions ---
@@ -130,7 +152,7 @@ contract DFSEscrowManager is ReentrancyGuard, Ownable {
         uint256 _endTime,
         string calldata _vaultName,
         uint256 _maxParticipants
-    ) external nonReentrant {
+    ) external nonReentrant onlyAuthorizedCreator {
         if (_token == address(0)) revert InvalidToken();
         if (_dues < MINIMUM_DUES) revert InvalidDues();
         if (bytes(_vaultName).length == 0) revert EmptyLeagueName();
@@ -420,6 +442,27 @@ contract DFSEscrowManager is ReentrancyGuard, Ownable {
         emit MaxEntriesPerUserUpdated(_newMaxEntriesPerUser);
     }
 
+    /**
+     * @notice Adds an address to the authorized creators whitelist.
+     * @dev Can only be called by the contract owner.
+     * @param _creator The address to authorize for creating escrows.
+     */
+    function addAuthorizedCreator(address _creator) external onlyOwner {
+        if (_creator == address(0)) revert InvalidToken();
+        authorizedCreators[_creator] = true;
+        emit AuthorizedCreatorAdded(_creator);
+    }
+
+    /**
+     * @notice Removes an address from the authorized creators whitelist.
+     * @dev Can only be called by the contract owner.
+     * @param _creator The address to remove from authorized creators.
+     */
+    function removeAuthorizedCreator(address _creator) external onlyOwner {
+        authorizedCreators[_creator] = false;
+        emit AuthorizedCreatorRemoved(_creator);
+    }
+
     // --- View Functions ---
 
     /**
@@ -517,5 +560,14 @@ contract DFSEscrowManager is ReentrancyGuard, Ownable {
      */
     function getTotalEntries(uint256 _escrowId) external view returns (uint256) {
         return escrows[_escrowId].totalEntries;
+    }
+    
+    /**
+     * @notice Checks if an address is authorized to create escrows.
+     * @param _address The address to check.
+     * @return True if the address is authorized, false otherwise.
+     */
+    function isAuthorizedCreator(address _address) external view returns (bool) {
+        return authorizedCreators[_address];
     }
 }
