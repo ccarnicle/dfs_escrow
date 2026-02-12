@@ -68,6 +68,10 @@ contract DFSEscrowManager is ReentrancyGuard, Ownable {
 
     mapping(uint256 => Escrow) public escrows;
 
+    // Overflow recipient mapping: escrowId => recipient address
+    // If unset (zero), defaults to escrow.organizer
+    mapping(uint256 => address) public overflowRecipient;
+
     // --- Events ---
     event EscrowCreated(
         uint256 indexed escrowId,
@@ -80,7 +84,15 @@ contract DFSEscrowManager is ReentrancyGuard, Ownable {
 
     event ParticipantJoined(uint256 indexed escrowId, address indexed participant, uint256 numEntries);
 
-    event WinningsDistributed(uint256 indexed escrowId, address[] winners, uint256[] amounts);
+    event WinningsDistributed(
+        uint256 indexed escrowId,
+        address[] winners,
+        uint256[] amounts,
+        address overflowRecipient,
+        uint256 overflowAmount
+    );
+
+    event OverflowRecipientSet(uint256 indexed escrowId, address indexed recipient);
 
     event PoolFunded(uint256 indexed escrowId, address indexed contributor, uint256 amount);
     
@@ -105,8 +117,8 @@ contract DFSEscrowManager is ReentrancyGuard, Ownable {
     error LeagueNameTooLong();
     error EndTimeTooSoon();
     error InvalidMaxParticipants();
-    error PayoutExceedsTolerance(uint256 totalPayout, uint256 maxWithdrawable);
-    error CannotClosePoolWithFunds();
+    error InsufficientPool(uint256 totalPayout, uint256 maxWithdrawable);
+    error InsufficientWithdrawn(uint256 withdrawn, uint256 required);
     error EmptyLeagueName();
     error WinnerNotParticipant();
     error InvalidMaxEntries();
@@ -145,13 +157,15 @@ contract DFSEscrowManager is ReentrancyGuard, Ownable {
      * @param _endTime The timestamp when the escrow closes for new participants.
      * @param _vaultName The name for the new Yearn Vault.
      * @param _maxParticipants The maximum number of entries allowed (interpreted as max entries, not unique wallets).
+     * @param _overflowRecipient Optional address to receive surplus funds. If zero, defaults to organizer.
      */
     function createEscrow(
         address _token,
         uint256 _dues,
         uint256 _endTime,
         string calldata _vaultName,
-        uint256 _maxParticipants
+        uint256 _maxParticipants,
+        address _overflowRecipient
     ) external nonReentrant onlyAuthorizedCreator {
         if (_token == address(0)) revert InvalidToken();
         if (_dues < MINIMUM_DUES) revert InvalidDues();
@@ -203,6 +217,12 @@ contract DFSEscrowManager is ReentrancyGuard, Ownable {
         activeEscrowIds.push(escrowId);
 
         nextEscrowId++;
+
+        // Set overflow recipient if provided
+        if (_overflowRecipient != address(0)) {
+            overflowRecipient[escrowId] = _overflowRecipient;
+            emit OverflowRecipientSet(escrowId, _overflowRecipient);
+        }
 
         emit EscrowCreated(
             escrowId,
@@ -302,6 +322,23 @@ contract DFSEscrowManager is ReentrancyGuard, Ownable {
     }
 
     /**
+     * @notice Sets the overflow recipient for an escrow.
+     * @dev Can only be called by the organizer before payouts are complete.
+     * @param _escrowId The ID of the escrow.
+     * @param _recipient The address to receive surplus funds (cannot be zero address).
+     */
+    function setOverflowRecipient(uint256 _escrowId, address _recipient) external {
+        Escrow storage escrow = escrows[_escrowId];
+        
+        if (msg.sender != escrow.organizer) revert NotOrganizer();
+        if (_recipient == address(0)) revert InvalidToken();
+        if (escrow.payoutsComplete) revert PayoutsAlreadyComplete();
+        
+        overflowRecipient[_escrowId] = _recipient;
+        emit OverflowRecipientSet(_escrowId, _recipient);
+    }
+
+    /**
      * @notice Allows anyone to add funds to an escrow pool without becoming a participant.
      * @dev This is useful for prize top-ups or community contributions.
      * @param _escrowId The ID of the escrow to fund.
@@ -345,14 +382,41 @@ contract DFSEscrowManager is ReentrancyGuard, Ownable {
         if (escrow.payoutsComplete) revert PayoutsAlreadyComplete();
         if (_winners.length > MAX_RECIPIENTS) revert TooManyRecipients();
         if (_winners.length != _amounts.length) revert PayoutArraysMismatch();
+        
+        // Handle zero winners case: withdraw all funds and send to overflow recipient
         if (_winners.length == 0) {
-            // Prevent closing out the escrow if there are still funds in the vault.
-            if (escrow.yearnVault.totalAssets() > 0) {
-                revert CannotClosePoolWithFunds();
+            uint256 maxWithdrawable = escrow.yearnVault.maxWithdraw(address(this));
+            
+            // Determine overflow recipient (defaults to organizer if not set)
+            address overflowTo = overflowRecipient[_escrowId];
+            if (overflowTo == address(0)) {
+                overflowTo = escrow.organizer;
             }
-            // If there are no funds and no winners, it's safe to close.
+            
+            // Mark payouts as complete
             escrow.payoutsComplete = true;
-            emit WinningsDistributed(_escrowId, _winners, _amounts);
+            
+            // O(1) removal from the active list
+            uint256 indexToRemove = escrow.activeArrayIndex;
+            uint256 lastEscrowId = activeEscrowIds[activeEscrowIds.length - 1];
+            activeEscrowIds[indexToRemove] = lastEscrowId;
+            escrows[lastEscrowId].activeArrayIndex = indexToRemove;
+            activeEscrowIds.pop();
+            
+            // Emit event with overflow info
+            emit WinningsDistributed(_escrowId, _winners, _amounts, overflowTo, 0);
+            
+            // Withdraw all funds and send to overflow recipient
+            if (maxWithdrawable > 0) {
+                uint256 balanceBefore = escrow.token.balanceOf(address(this));
+                escrow.yearnVault.withdraw(maxWithdrawable, address(this), address(this));
+                uint256 withdrawnAmount = escrow.token.balanceOf(address(this)) - balanceBefore;
+                
+                if (withdrawnAmount > 0) {
+                    escrow.token.safeTransfer(overflowTo, withdrawnAmount);
+                }
+            }
+            
             return;
         }
 
@@ -378,13 +442,15 @@ contract DFSEscrowManager is ReentrancyGuard, Ownable {
 
         uint256 maxWithdrawable = escrow.yearnVault.maxWithdraw(address(this));
 
-        // Check if totalPayout is within 3% tolerance of maxWithdrawable
-        // to protect against mismatched payout arrays and allow for minor slippage.
-        uint256 lowerBound = (maxWithdrawable * 97) / 100;
-        uint256 upperBound = (maxWithdrawable * 103) / 100;
+        // Require that total payout does not exceed max withdrawable
+        if (totalPayout > maxWithdrawable) {
+            revert InsufficientPool(totalPayout, maxWithdrawable);
+        }
 
-        if (totalPayout < lowerBound || totalPayout > upperBound) {
-            revert PayoutExceedsTolerance(totalPayout, maxWithdrawable);
+        // Determine overflow recipient (defaults to organizer if not set)
+        address overflowTo = overflowRecipient[_escrowId];
+        if (overflowTo == address(0)) {
+            overflowTo = escrow.organizer;
         }
 
         // --- EFFECTS (CEI) ---
@@ -401,33 +467,36 @@ contract DFSEscrowManager is ReentrancyGuard, Ownable {
         // Remove the last element, which is now a duplicate
         activeEscrowIds.pop();
 
-        // Emit the distribution event before external calls (will revert if any interaction fails)
-        emit WinningsDistributed(_escrowId, _winners, _amounts);
-
         // --- INTERACTIONS ---
+        uint256 overflowAmount = 0;
         if (maxWithdrawable > 0) {
             uint256 balanceBefore = escrow.token.balanceOf(address(this));
             escrow.yearnVault.withdraw(maxWithdrawable, address(this), address(this));
             uint256 withdrawnAmount = escrow.token.balanceOf(address(this)) - balanceBefore;
 
-            uint256 distributedSoFar = 0;
-            // Distribute to all but the last winner
-            if (_winners.length > 1) {
-                for (uint256 i = 0; i < _winners.length - 1; i++) {
-                    uint256 amount = _amounts[i];
-                    if (amount > 0) {
-                        escrow.token.safeTransfer(_winners[i], amount);
-                        distributedSoFar += amount;
-                    }
+            // Ensure we withdrew at least the required amount
+            if (withdrawnAmount < totalPayout) {
+                revert InsufficientWithdrawn(withdrawnAmount, totalPayout);
+            }
+
+            // Distribute exact amounts to all winners
+            for (uint256 i = 0; i < _winners.length; i++) {
+                uint256 amount = _amounts[i];
+                if (amount > 0) {
+                    escrow.token.safeTransfer(_winners[i], amount);
                 }
             }
-            
-            // The last winner gets the remainder of the withdrawn amount.
-            // This ensures the contract balance is cleared and accounts for any vault slippage.
-            if (withdrawnAmount > distributedSoFar) {
-                uint256 remainder = withdrawnAmount - distributedSoFar;
-                escrow.token.safeTransfer(_winners[_winners.length - 1], remainder);
-            }
+
+            // Calculate and transfer overflow to recipient
+            overflowAmount = withdrawnAmount - totalPayout;
+        }
+
+        // Emit the distribution event after interactions (includes overflow info)
+        emit WinningsDistributed(_escrowId, _winners, _amounts, overflowTo, overflowAmount);
+
+        // Transfer overflow amount if any
+        if (overflowAmount > 0) {
+            escrow.token.safeTransfer(overflowTo, overflowAmount);
         }
     }
 

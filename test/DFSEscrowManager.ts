@@ -60,7 +60,7 @@ describe("DFSEscrowManager", function () {
             const endTime = (await time.latest()) + (2 * 24 * 3600); // 2 days from now
 
             // For DFS, organizer does NOT need funds/approval since they don't auto-join
-            const tx = await dfsEscrowManager.connect(organizer).createEscrow(tokenAddress, dues, endTime, "Test Vault", 10);
+            const tx = await dfsEscrowManager.connect(organizer).createEscrow(tokenAddress, dues, endTime, "Test Vault", 10, ethers.ZeroAddress);
             const receipt = await tx.wait();
 
             // Find the event to get the new vault's address
@@ -110,7 +110,8 @@ describe("DFSEscrowManager", function () {
                 dues, 
                 (await time.latest()) + (2 * 24 * 3600), 
                 "Join Vault", 
-                5
+                5,
+                ethers.ZeroAddress
             );
 
             const details = await dfsEscrowManager.getEscrowDetails(1);
@@ -129,11 +130,11 @@ describe("DFSEscrowManager", function () {
             const belowMin = minDues - 1n;
             const endTime = (await time.latest()) + (2 * 24 * 3600);
             await expect(
-                dfsEscrowManager.connect(organizer).createEscrow(ethers.ZeroAddress, minDues, endTime, "N", 10)
+                dfsEscrowManager.connect(organizer).createEscrow(ethers.ZeroAddress, minDues, endTime, "N", 10, ethers.ZeroAddress)
             ).to.be.revertedWithCustomError(dfsEscrowManager, "InvalidToken");
 
             await expect(
-                dfsEscrowManager.connect(organizer).createEscrow(await mockToken.getAddress(), belowMin, endTime, "N", 10)
+                dfsEscrowManager.connect(organizer).createEscrow(await mockToken.getAddress(), belowMin, endTime, "N", 10, ethers.ZeroAddress)
             ).to.be.revertedWithCustomError(dfsEscrowManager, "InvalidDues");
         });
 
@@ -143,7 +144,7 @@ describe("DFSEscrowManager", function () {
             const nearEndTime = (await time.latest()) + 1800; // Only 30 minutes from now
 
             await expect(
-                dfsEscrowManager.connect(organizer).createEscrow(await mockToken.getAddress(), dues, nearEndTime, "T", 10)
+                dfsEscrowManager.connect(organizer).createEscrow(await mockToken.getAddress(), dues, nearEndTime, "T", 10, ethers.ZeroAddress)
             ).to.be.revertedWithCustomError(dfsEscrowManager, "EndTimeTooSoon");
         });
 
@@ -158,7 +159,8 @@ describe("DFSEscrowManager", function () {
                     dues,
                     endTime,
                     "",
-                    10
+                    10,
+                    ethers.ZeroAddress
                 )
             ).to.be.revertedWithCustomError(dfsEscrowManager, "EmptyLeagueName");
         });
@@ -175,7 +177,8 @@ describe("DFSEscrowManager", function () {
                     dues,
                     endTime,
                     "CapTest",
-                    cap + 1n
+                    cap + 1n,
+                    ethers.ZeroAddress
                 )
             ).to.be.revertedWithCustomError(dfsEscrowManager, "InvalidMaxParticipants");
         });
@@ -190,7 +193,8 @@ describe("DFSEscrowManager", function () {
                 dues,
                 endTime,
                 "!!!",
-                3
+                3,
+                ethers.ZeroAddress
             );
 
             const details = await dfsEscrowManager.getEscrowDetails(1);
@@ -210,7 +214,8 @@ describe("DFSEscrowManager", function () {
                 dues,
                 (await time.latest()) + (2 * 24 * 3600),
                 "Test Join",
-                2
+                2,
+                ethers.ZeroAddress
             );
 
             // Mint tokens to participant and approve manager
@@ -252,7 +257,8 @@ describe("DFSEscrowManager", function () {
                 dues,
                 (await time.latest()) + (2 * 24 * 3600),
                 "Multi Entry",
-                100
+                100,
+                ethers.ZeroAddress
             );
 
             const totalDues = dues * numEntries;
@@ -281,7 +287,8 @@ describe("DFSEscrowManager", function () {
                 dues,
                 (await time.latest()) + (2 * 24 * 3600),
                 "Cumulative Entries",
-                100
+                100,
+                ethers.ZeroAddress
             );
 
             // First join with 3 entries
@@ -315,7 +322,8 @@ describe("DFSEscrowManager", function () {
                 dues,
                 (await time.latest()) + (2 * 24 * 3600),
                 "Full Pool",
-                maxEntries
+                maxEntries,
+                ethers.ZeroAddress
             );
 
             // P1 joins with maxEntries
@@ -340,7 +348,8 @@ describe("DFSEscrowManager", function () {
                 dues,
                 (await time.latest()) + (2 * 24 * 3600),
                 "Max Entries Test",
-                10000
+                10000,
+                ethers.ZeroAddress
             );
 
             // Try to join with more than maxEntriesPerUser
@@ -361,7 +370,8 @@ describe("DFSEscrowManager", function () {
                 dues,
                 (await time.latest()) + (2 * 24 * 3600),
                 "Zero Entries",
-                10
+                10,
+                ethers.ZeroAddress
             );
 
             await mockToken.mint(participant1.address, dues);
@@ -381,7 +391,8 @@ describe("DFSEscrowManager", function () {
                 dues,
                 endTimeSoon,
                 "LateJoin",
-                2
+                2,
+                ethers.ZeroAddress
             );
 
             await time.increaseTo(endTimeSoon + 1);
@@ -405,7 +416,8 @@ describe("DFSEscrowManager", function () {
                 dues, 
                 (await time.latest()) + (2 * 24 * 3600), 
                 "Contrib", 
-                5
+                5,
+                ethers.ZeroAddress
             );
             
             await mockToken.mint(contributor.address, contribution);
@@ -444,7 +456,8 @@ describe("DFSEscrowManager", function () {
                 dues, 
                 endTime, 
                 "TF", 
-                10
+                10,
+                ethers.ZeroAddress
             );
 
             await mockToken.mint(participant1.address, dues);
@@ -464,7 +477,8 @@ describe("DFSEscrowManager", function () {
                 dues, 
                 twoDaysFromNow, 
                 "Escrow2", 
-                2
+                2,
+                ethers.ZeroAddress
             );
             expect(await dfsEscrowManager.getActiveEscrowIds()).to.deep.equal([1n, 2n]);
 
@@ -487,6 +501,8 @@ describe("DFSEscrowManager", function () {
             expect(eventLog.args.escrowId).to.equal(1);
             expect(eventLog.args.winners).to.deep.equal(winners);
             expect(eventLog.args.amounts.map((a: any) => a)).to.deep.equal(amounts);
+            expect(eventLog.args.overflowRecipient).to.equal(organizer.address); // Defaults to organizer
+            expect(eventLog.args.overflowAmount).to.equal(0n); // No overflow in this case
 
             expect(await mockToken.balanceOf(participant1.address)).to.equal(p1_initialBalance + dues);
             
@@ -504,61 +520,36 @@ describe("DFSEscrowManager", function () {
             expect(escrow2Data.activeArrayIndex).to.equal(0);
         });
 
-        it("Should correctly distribute remainder to the last winner with slippage", async function () {
+        it("Should distribute exact amounts to winners (no remainder behavior)", async function () {
             const { dfsEscrowManager, mockToken, organizer, participant1, dues, endTime } = await loadFixture(setupJoinedEscrow);
             
             await time.increaseTo(endTime + 1);
-
-            const details = await dfsEscrowManager.getEscrowDetails(1);
-            const vault = await ethers.getContractAt("MockYearnVault", details.yearnVault);
-
-            // Simulate 1% slippage on withdrawal (100 bps)
-            await vault.set_slippage_bps(100);
-
-            const totalInVault = dues; // Only participant1 joined
-            const expectedWithdrawn = (totalInVault * 9900n) / 10000n;
             
             const winners = [participant1.address];
-            const amounts = [dues];
+            const amounts = [dues]; // Exact payout amount
 
             const p1_initial = await mockToken.balanceOf(participant1.address);
 
             await dfsEscrowManager.connect(organizer).distributeWinnings(1, winners, amounts);
             
-            // Participant1 (the last winner) should receive the remainder accounting for slippage
-            expect(await mockToken.balanceOf(participant1.address)).to.equal(p1_initial + expectedWithdrawn);
-            
-            const expectedDust = totalInVault - expectedWithdrawn;
-            expect(await mockToken.balanceOf(details.yearnVault)).to.equal(expectedDust);
+            // Participant1 should receive exact amount (no remainder distribution)
+            expect(await mockToken.balanceOf(participant1.address)).to.equal(p1_initial + dues);
         });
 
-        it("Should revert if total payout is outside tolerance", async function () {
+        it("Should revert if total payout exceeds max withdrawable", async function () {
             const { dfsEscrowManager, organizer, participant1, dues, endTime } = await loadFixture(setupJoinedEscrow);
             
             await time.increaseTo(endTime + 1);
             
             const totalInVault = dues;
             
-            // Payout is too low (more than 3% below vault balance)
-            const lowAmount = (totalInVault * 96n) / 100n;
-            await expect(dfsEscrowManager.connect(organizer).distributeWinnings(1, [participant1.address], [lowAmount]))
-                .to.be.revertedWithCustomError(dfsEscrowManager, "PayoutExceedsTolerance");
-
-            // Payout is too high (more than 3% above vault balance)
-            const highAmount = (totalInVault * 104n) / 100n;
+            // Payout exceeds what's available in vault
+            const highAmount = totalInVault + ethers.parseUnits("1", 6);
             await expect(dfsEscrowManager.connect(organizer).distributeWinnings(1, [participant1.address], [highAmount]))
-                .to.be.revertedWithCustomError(dfsEscrowManager, "PayoutExceedsTolerance");
+                .to.be.revertedWithCustomError(dfsEscrowManager, "InsufficientPool");
         });
 
-        it("Should revert if trying to close a funded pool with no winners", async function () {
-            const { dfsEscrowManager, organizer, endTime } = await loadFixture(setupJoinedEscrow);
-
-            await time.increaseTo(endTime + 1);
-
-            // The pool has funds from participant1
-            await expect(dfsEscrowManager.connect(organizer).distributeWinnings(1, [], []))
-                .to.be.revertedWithCustomError(dfsEscrowManager, "CannotClosePoolWithFunds");
-        });
+        // This test is replaced by test G: Zero winners close-out with funds
 
         it("Should revert for invalid winner/amount arrays", async function () {
             const { dfsEscrowManager, organizer, participant1, dues, endTime } = await loadFixture(setupJoinedEscrow);
@@ -619,6 +610,362 @@ describe("DFSEscrowManager", function () {
             await expect(
                 dfsEscrowManager.connect(organizer).distributeWinnings(1, [participant1.address], [dues])
             ).to.be.revertedWithCustomError(dfsEscrowManager, "PayoutsAlreadyComplete");
+        });
+
+        // --- New tests for overflow recipient upgrade ---
+
+        describe("Overflow Recipient - Surplus Scenario", function () {
+            it("A) Should handle surplus: winners get exact amounts, overflow goes to recipient", async function () {
+                const { dfsEscrowManager, mockToken, organizer, participant1, participant2, contributor } = await loadFixture(
+                    deployDFSEscrowManagerFixture
+                );
+
+                const dues = ethers.parseUnits("1", 6);
+                const endTime = (await time.latest()) + (2 * 24 * 3600);
+                const overflowRecipient = contributor.address;
+
+                // Create escrow with overflow recipient
+                await dfsEscrowManager.connect(organizer).createEscrow(
+                    await mockToken.getAddress(),
+                    dues,
+                    endTime,
+                    "Surplus Test",
+                    10,
+                    overflowRecipient
+                );
+
+                // Participants join
+                await mockToken.mint(participant1.address, dues);
+                await mockToken.connect(participant1).approve(await dfsEscrowManager.getAddress(), dues);
+                await dfsEscrowManager.connect(participant1).joinEscrow(1, 1);
+
+                await mockToken.mint(participant2.address, dues);
+                await mockToken.connect(participant2).approve(await dfsEscrowManager.getAddress(), dues);
+                await dfsEscrowManager.connect(participant2).joinEscrow(1, 1);
+
+                // Top up pool via addToPool
+                const topUp = ethers.parseUnits("1", 6);
+                await mockToken.mint(contributor.address, topUp);
+                await mockToken.connect(contributor).approve(await dfsEscrowManager.getAddress(), topUp);
+                await dfsEscrowManager.connect(contributor).addToPool(1, topUp);
+
+                // Total in pool: 2 * dues + topUp = 3 * dues
+                // Payout: 2 * dues (one to each participant)
+                // Overflow: topUp = 1 * dues
+
+                await time.increaseTo(endTime + 1);
+
+                const p1_initial = await mockToken.balanceOf(participant1.address);
+                const p2_initial = await mockToken.balanceOf(participant2.address);
+                const overflow_initial = await mockToken.balanceOf(overflowRecipient);
+
+                const winners = [participant1.address, participant2.address];
+                const amounts = [dues, dues];
+
+                const tx = await dfsEscrowManager.connect(organizer).distributeWinnings(1, winners, amounts);
+                const receipt = await tx.wait();
+                const eventLog = receipt?.logs?.find(
+                    (log: any) => log.fragment && log.fragment.name === 'WinningsDistributed'
+                ) as EventLog | undefined;
+
+                expect(eventLog).to.not.be.undefined;
+                if (!eventLog) throw new Error("WinningsDistributed event not found");
+                expect(eventLog.args.overflowRecipient).to.equal(overflowRecipient);
+                expect(eventLog.args.overflowAmount).to.equal(topUp);
+
+                // Winners received exact amounts
+                expect(await mockToken.balanceOf(participant1.address)).to.equal(p1_initial + dues);
+                expect(await mockToken.balanceOf(participant2.address)).to.equal(p2_initial + dues);
+
+                // Overflow recipient received remainder
+                expect(await mockToken.balanceOf(overflowRecipient)).to.equal(overflow_initial + topUp);
+
+                // Escrow marked complete
+                const details = await dfsEscrowManager.getEscrowDetails(1);
+                expect(details.payoutsComplete).to.be.true;
+            });
+        });
+
+        describe("Overflow Recipient - Exact Payout Scenario", function () {
+            it("B) Should handle exact payout: no overflow", async function () {
+                const { dfsEscrowManager, mockToken, organizer, participant1, contributor } = await loadFixture(
+                    deployDFSEscrowManagerFixture
+                );
+
+                const dues = ethers.parseUnits("1", 6);
+                const endTime = (await time.latest()) + (2 * 24 * 3600);
+                const overflowRecipient = contributor.address;
+
+                await dfsEscrowManager.connect(organizer).createEscrow(
+                    await mockToken.getAddress(),
+                    dues,
+                    endTime,
+                    "Exact Test",
+                    10,
+                    overflowRecipient
+                );
+
+                await mockToken.mint(participant1.address, dues);
+                await mockToken.connect(participant1).approve(await dfsEscrowManager.getAddress(), dues);
+                await dfsEscrowManager.connect(participant1).joinEscrow(1, 1);
+
+                await time.increaseTo(endTime + 1);
+
+                const overflow_initial = await mockToken.balanceOf(overflowRecipient);
+
+                const tx = await dfsEscrowManager.connect(organizer).distributeWinnings(1, [participant1.address], [dues]);
+                const receipt = await tx.wait();
+                const eventLog = receipt?.logs?.find(
+                    (log: any) => log.fragment && log.fragment.name === 'WinningsDistributed'
+                ) as EventLog | undefined;
+
+                expect(eventLog).to.not.be.undefined;
+                if (!eventLog) throw new Error("WinningsDistributed event not found");
+                expect(eventLog.args.overflowAmount).to.equal(0n);
+
+                // Overflow recipient received nothing
+                expect(await mockToken.balanceOf(overflowRecipient)).to.equal(overflow_initial);
+            });
+        });
+
+        describe("Overflow Recipient - Deficit Scenario", function () {
+            it("C) Should revert if pool < prizes", async function () {
+                const { dfsEscrowManager, mockToken, organizer, participant1 } = await loadFixture(
+                    deployDFSEscrowManagerFixture
+                );
+
+                const dues = ethers.parseUnits("1", 6);
+                const endTime = (await time.latest()) + (2 * 24 * 3600);
+
+                await dfsEscrowManager.connect(organizer).createEscrow(
+                    await mockToken.getAddress(),
+                    dues,
+                    endTime,
+                    "Deficit Test",
+                    10,
+                    ethers.ZeroAddress
+                );
+
+                await mockToken.mint(participant1.address, dues);
+                await mockToken.connect(participant1).approve(await dfsEscrowManager.getAddress(), dues);
+                await dfsEscrowManager.connect(participant1).joinEscrow(1, 1);
+
+                await time.increaseTo(endTime + 1);
+
+                // Try to payout more than what's in the pool
+                const excessivePayout = dues + ethers.parseUnits("1", 6);
+                await expect(
+                    dfsEscrowManager.connect(organizer).distributeWinnings(1, [participant1.address], [excessivePayout])
+                ).to.be.revertedWithCustomError(dfsEscrowManager, "InsufficientPool");
+            });
+        });
+
+        describe("Overflow Recipient - Default Behavior", function () {
+            it("D) Should default overflow to organizer when not set", async function () {
+                const { dfsEscrowManager, mockToken, organizer, participant1, contributor } = await loadFixture(
+                    deployDFSEscrowManagerFixture
+                );
+
+                const dues = ethers.parseUnits("1", 6);
+                const endTime = (await time.latest()) + (2 * 24 * 3600);
+
+                // Create escrow without setting overflow recipient (passes ZeroAddress)
+                await dfsEscrowManager.connect(organizer).createEscrow(
+                    await mockToken.getAddress(),
+                    dues,
+                    endTime,
+                    "Default Test",
+                    10,
+                    ethers.ZeroAddress
+                );
+
+                await mockToken.mint(participant1.address, dues);
+                await mockToken.connect(participant1).approve(await dfsEscrowManager.getAddress(), dues);
+                await dfsEscrowManager.connect(participant1).joinEscrow(1, 1);
+
+                // Top up pool
+                const topUp = ethers.parseUnits("0.5", 6);
+                await mockToken.mint(contributor.address, topUp);
+                await mockToken.connect(contributor).approve(await dfsEscrowManager.getAddress(), topUp);
+                await dfsEscrowManager.connect(contributor).addToPool(1, topUp);
+
+                await time.increaseTo(endTime + 1);
+
+                const organizer_initial = await mockToken.balanceOf(organizer.address);
+
+                const tx = await dfsEscrowManager.connect(organizer).distributeWinnings(1, [participant1.address], [dues]);
+                const receipt = await tx.wait();
+                const eventLog = receipt?.logs?.find(
+                    (log: any) => log.fragment && log.fragment.name === 'WinningsDistributed'
+                ) as EventLog | undefined;
+
+                expect(eventLog).to.not.be.undefined;
+                if (!eventLog) throw new Error("WinningsDistributed event not found");
+                expect(eventLog.args.overflowRecipient).to.equal(organizer.address);
+                expect(eventLog.args.overflowAmount).to.equal(topUp);
+
+                // Organizer received overflow
+                expect(await mockToken.balanceOf(organizer.address)).to.equal(organizer_initial + topUp);
+            });
+        });
+
+        describe("Overflow Recipient - Setter Restrictions", function () {
+            it("E) Should only allow organizer to set overflow recipient", async function () {
+                const { dfsEscrowManager, mockToken, organizer, participant1 } = await loadFixture(deployDFSEscrowManagerFixture);
+                const dues = ethers.parseUnits("1", 6);
+                const endTime = (await time.latest()) + (2 * 24 * 3600);
+
+                await dfsEscrowManager.connect(organizer).createEscrow(
+                    await mockToken.getAddress(),
+                    dues,
+                    endTime,
+                    "Setter Test",
+                    10,
+                    ethers.ZeroAddress
+                );
+
+                // Non-organizer cannot set
+                await expect(
+                    dfsEscrowManager.connect(participant1).setOverflowRecipient(1, participant1.address)
+                ).to.be.revertedWithCustomError(dfsEscrowManager, "NotOrganizer");
+            });
+
+            it("E) Should not allow setting overflow recipient to zero address", async function () {
+                const { dfsEscrowManager, mockToken, organizer } = await loadFixture(deployDFSEscrowManagerFixture);
+                const dues = ethers.parseUnits("1", 6);
+                const endTime = (await time.latest()) + (2 * 24 * 3600);
+
+                await dfsEscrowManager.connect(organizer).createEscrow(
+                    await mockToken.getAddress(),
+                    dues,
+                    endTime,
+                    "Zero Test",
+                    10,
+                    ethers.ZeroAddress
+                );
+
+                await expect(
+                    dfsEscrowManager.connect(organizer).setOverflowRecipient(1, ethers.ZeroAddress)
+                ).to.be.revertedWithCustomError(dfsEscrowManager, "InvalidToken");
+            });
+
+            it("E) Should not allow setting overflow recipient after payouts complete", async function () {
+                const { dfsEscrowManager, mockToken, organizer, participant1, contributor } = await loadFixture(
+                    deployDFSEscrowManagerFixture
+                );
+                const dues = ethers.parseUnits("1", 6);
+                const endTime = (await time.latest()) + (2 * 24 * 3600);
+
+                await dfsEscrowManager.connect(organizer).createEscrow(
+                    await mockToken.getAddress(),
+                    dues,
+                    endTime,
+                    "Complete Test",
+                    10,
+                    ethers.ZeroAddress
+                );
+
+                await mockToken.mint(participant1.address, dues);
+                await mockToken.connect(participant1).approve(await dfsEscrowManager.getAddress(), dues);
+                await dfsEscrowManager.connect(participant1).joinEscrow(1, 1);
+
+                await time.increaseTo(endTime + 1);
+                await dfsEscrowManager.connect(organizer).distributeWinnings(1, [participant1.address], [dues]);
+
+                // Cannot set after payouts complete
+                await expect(
+                    dfsEscrowManager.connect(organizer).setOverflowRecipient(1, contributor.address)
+                ).to.be.revertedWithCustomError(dfsEscrowManager, "PayoutsAlreadyComplete");
+            });
+
+            it("E) Should allow organizer to set overflow recipient before payouts", async function () {
+                const { dfsEscrowManager, mockToken, organizer, participant1, contributor } = await loadFixture(
+                    deployDFSEscrowManagerFixture
+                );
+                const dues = ethers.parseUnits("1", 6);
+                const endTime = (await time.latest()) + (2 * 24 * 3600);
+
+                await dfsEscrowManager.connect(organizer).createEscrow(
+                    await mockToken.getAddress(),
+                    dues,
+                    endTime,
+                    "Set Test",
+                    10,
+                    ethers.ZeroAddress
+                );
+
+                await mockToken.mint(participant1.address, dues);
+                await mockToken.connect(participant1).approve(await dfsEscrowManager.getAddress(), dues);
+                await dfsEscrowManager.connect(participant1).joinEscrow(1, 1);
+
+                // Top up pool
+                const topUp = ethers.parseUnits("0.5", 6);
+                await mockToken.mint(contributor.address, topUp);
+                await mockToken.connect(contributor).approve(await dfsEscrowManager.getAddress(), topUp);
+                await dfsEscrowManager.connect(contributor).addToPool(1, topUp);
+
+                // Set overflow recipient
+                await expect(dfsEscrowManager.connect(organizer).setOverflowRecipient(1, contributor.address))
+                    .to.emit(dfsEscrowManager, "OverflowRecipientSet")
+                    .withArgs(1, contributor.address);
+
+                expect(await dfsEscrowManager.overflowRecipient(1)).to.equal(contributor.address);
+
+                await time.increaseTo(endTime + 1);
+
+                const contributor_initial = await mockToken.balanceOf(contributor.address);
+                await dfsEscrowManager.connect(organizer).distributeWinnings(1, [participant1.address], [dues]);
+
+                // Contributor should receive overflow
+                expect(await mockToken.balanceOf(contributor.address)).to.equal(contributor_initial + topUp);
+            });
+        });
+
+        describe("Overflow Recipient - Zero Winners", function () {
+            it("G) Should allow closing escrow with funds when no winners", async function () {
+                const { dfsEscrowManager, mockToken, organizer, participant1, contributor } = await loadFixture(
+                    deployDFSEscrowManagerFixture
+                );
+                const dues = ethers.parseUnits("1", 6);
+                const endTime = (await time.latest()) + (2 * 24 * 3600);
+                const overflowRecipient = contributor.address;
+
+                await dfsEscrowManager.connect(organizer).createEscrow(
+                    await mockToken.getAddress(),
+                    dues,
+                    endTime,
+                    "Zero Winners Test",
+                    10,
+                    overflowRecipient
+                );
+
+                await mockToken.mint(participant1.address, dues);
+                await mockToken.connect(participant1).approve(await dfsEscrowManager.getAddress(), dues);
+                await dfsEscrowManager.connect(participant1).joinEscrow(1, 1);
+
+                await time.increaseTo(endTime + 1);
+
+                const overflow_initial = await mockToken.balanceOf(overflowRecipient);
+
+                // Distribute with no winners
+                const tx = await dfsEscrowManager.connect(organizer).distributeWinnings(1, [], []);
+                const receipt = await tx.wait();
+                const eventLog = receipt?.logs?.find(
+                    (log: any) => log.fragment && log.fragment.name === 'WinningsDistributed'
+                ) as EventLog | undefined;
+
+                expect(eventLog).to.not.be.undefined;
+                if (!eventLog) throw new Error("WinningsDistributed event not found");
+                expect(eventLog.args.winners.length).to.equal(0);
+                expect(eventLog.args.overflowRecipient).to.equal(overflowRecipient);
+
+                // All funds should go to overflow recipient
+                expect(await mockToken.balanceOf(overflowRecipient)).to.equal(overflow_initial + dues);
+
+                // Escrow should be marked complete
+                const details = await dfsEscrowManager.getEscrowDetails(1);
+                expect(details.payoutsComplete).to.be.true;
+            });
         });
     });
 
@@ -717,7 +1064,8 @@ describe("DFSEscrowManager", function () {
                     dues,
                     endTime,
                     "Unauthorized Vault",
-                    10
+                    10,
+                    ethers.ZeroAddress
                 )
             ).to.be.revertedWithCustomError(dfsEscrowManager, "NotAuthorizedCreator");
         });
@@ -736,7 +1084,8 @@ describe("DFSEscrowManager", function () {
                     dues,
                     endTime,
                     "Authorized Vault",
-                    10
+                    10,
+                    ethers.ZeroAddress
                 )
             ).to.emit(dfsEscrowManager, "EscrowCreated");
         });
@@ -758,7 +1107,8 @@ describe("DFSEscrowManager", function () {
                 dues, 
                 (await time.latest()) + (2 * 24 * 3600), 
                 "V", 
-                3
+                3,
+                ethers.ZeroAddress
             );
 
             expect(await dfsEscrowManager.getCreatedEscrows(organizer.address)).to.deep.equal([1n]);
@@ -789,7 +1139,8 @@ describe("DFSEscrowManager", function () {
                 dues,
                 (await time.latest()) + (2 * 24 * 3600),
                 "Entry Count Test",
-                100
+                100,
+                ethers.ZeroAddress
             );
 
             // User hasn't joined yet

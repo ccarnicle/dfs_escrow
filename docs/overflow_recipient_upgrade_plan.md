@@ -8,6 +8,33 @@ Surplus funds are withdrawn and routed to the overflow recipient.
 
 ---
 
+## Status
+
+### ✅ Completed
+- **Contract Implementation**: All contract changes implemented in `contracts/DFSEscrowManager.sol`
+  - Overflow recipient storage mapping and events added
+  - `createEscrow()` updated to accept optional overflow recipient parameter
+  - `setOverflowRecipient()` setter function added
+  - `distributeWinnings()` updated with new overflow handling logic
+  - Custom errors `InsufficientPool` and `InsufficientWithdrawn` added
+  - Contract compiles successfully
+
+- **Test Suite**: All tests implemented and passing (73 tests)
+  - Updated all existing `createEscrow` calls to include overflow recipient parameter
+  - Updated `WinningsDistributed` event checks for new signature
+  - Added tests for all scenarios (A, B, C, D, E, G) as specified in plan
+  - All tests passing successfully
+
+### 🔄 Next Steps (Pending - Flow Testnet Maintenance)
+- **Deployment**: Deploy new contract to Flow EVM testnet
+- **Frontend Updates**: Update testnet escrow manager address and event ABI
+- **Backend Updates**: Update `createEscrow` signature and event parsing in `firebase_v2`
+- **Smoke Testing**: Verify functionality on testnet
+
+**Note**: Flow testnet is currently down for maintenance. Deployment and integration updates will proceed once testnet is available.
+
+---
+
 ## Goals
 
 - Allow `distributeWinnings` to succeed when:
@@ -155,20 +182,24 @@ Add/modify tests to cover:
 
 ## Deployment Plan (Testnet)
 
-1) **Bump contract**
-- Implement changes in `contracts/DFSEscrowManager.sol`
+1) ✅ **Contract Implementation** - COMPLETED
+- ✅ Implemented changes in `contracts/DFSEscrowManager.sol`
+- ✅ Contract compiles successfully
 
-2) **Run tests locally**
-- `npm test` / hardhat test suite
-- Ensure new tests pass and existing ones updated accordingly
+2) ✅ **Test Suite** - COMPLETED
+- ✅ `npm test` / hardhat test suite - All 73 tests passing
+- ✅ New tests added and existing ones updated accordingly
+- ✅ Test coverage includes all scenarios (A, B, C, D, E, G)
 
-3) **Deploy new contract to Flow EVM testnet**
-- Use existing deployment script flow; record:
+3) 🔄 **Deploy new contract to Flow EVM testnet** - PENDING
+- ⏸️ **Status**: Waiting for Flow testnet to come back online (currently down for maintenance)
+- Use existing deployment script: `npm run deploy:dfs:testnet`
+- Record deployment details:
   - new `DFSEscrowManager` address
   - deploy tx hash
 - Confirm contract code on explorer if available
 
-4) **Update configuration in downstream repos**
+4) 🔄 **Update configuration in downstream repos** - PENDING
 - `firebase_v2/`
   - Update `EVM_ESCROW_MANAGER_ADDRESS_TESTNET` (env var / config)
   - Update `ESCROW_MANAGER_ABI` in `firebase_v2/functions/modules/evm.js`:
@@ -183,12 +214,14 @@ Add/modify tests to cover:
   - Update testnet escrow manager address in whatever config file stores it
   - If frontend reads events, update event ABI/decoding for new `WinningsDistributed` fields
 
-5) **Smoke test on testnet**
-- Create escrow with optional overflow recipient parameter (test both with and without)
-- Have 1–2 wallets join
-- AddToPool a top-up
-- Set winners list with prizes < pool
-- Distribute and verify winners + overflow transfers to correct recipient
+5) 🔄 **Smoke test on testnet** - PENDING
+- ⏸️ **Status**: Waiting for Flow testnet to come back online
+- Test plan:
+  - Create escrow with optional overflow recipient parameter (test both with and without)
+  - Have 1–2 wallets join
+  - AddToPool a top-up
+  - Set winners list with prizes < pool
+  - Distribute and verify winners + overflow transfers to correct recipient
 
 ---
 
@@ -208,3 +241,45 @@ Add/modify tests to cover:
 - Event shape change (`WinningsDistributed`) is technically breaking for any off-chain log parsing.
 - If you keep the same `distributeWinnings` signature, backend call sites remain mostly unchanged.
   - Only semantics change (tolerance removed, overflow behavior added).
+
+---
+
+## Deployment Checklist (When Testnet Available)
+
+### Pre-Deployment
+- [x] Contract changes implemented
+- [x] All tests passing locally
+- [ ] Verify Flow testnet is online
+- [ ] Confirm deployment script is ready (`scripts/deploy_dfs_escrow_manager.ts`)
+
+### Deployment
+- [ ] Run `npm run deploy:dfs:testnet`
+- [ ] Record new contract address: `_________________`
+- [ ] Record deployment tx hash: `_________________`
+- [ ] Verify contract on Flow EVM explorer
+
+### Frontend Updates (`aiSports_frontEnd/`)
+- [ ] Update testnet escrow manager address in config
+- [ ] Update `WinningsDistributed` event ABI if frontend parses events
+- [ ] Test frontend integration
+
+### Backend Updates (`firebase_v2/`)
+- [ ] Update `EVM_ESCROW_MANAGER_ADDRESS_TESTNET` environment variable
+- [ ] Update `ESCROW_MANAGER_ABI` in `functions/modules/evm.js`:
+  - [ ] Add `_overflowRecipient` parameter to `createEscrow` function signature
+  - [ ] Add `setOverflowRecipient` function to ABI (if needed)
+  - [ ] Update `WinningsDistributed` event signature
+- [ ] Update `create_evm_contest()` function:
+  - [ ] Add optional `overflowRecipient` parameter
+  - [ ] Pass `overflowRecipient` (or `null`/`ZeroAddress`) to contract
+- [ ] Remove/update any payout validation logic that assumes tolerance rule
+- [ ] Test backend integration
+
+### Post-Deployment Testing
+- [ ] Create escrow without overflow recipient (should default to organizer)
+- [ ] Create escrow with overflow recipient set
+- [ ] Test `setOverflowRecipient()` function
+- [ ] Test surplus scenario (pool > prizes)
+- [ ] Test exact payout scenario (pool == prizes)
+- [ ] Test zero winners scenario (all funds to overflow recipient)
+- [ ] Verify event emissions include overflow fields
