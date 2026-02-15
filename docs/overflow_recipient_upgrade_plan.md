@@ -25,13 +25,15 @@ Surplus funds are withdrawn and routed to the overflow recipient.
   - Added tests for all scenarios (A, B, C, D, E, G) as specified in plan
   - All tests passing successfully
 
-### 🔄 Next Steps (Pending - Flow Testnet Maintenance)
-- **Deployment**: Deploy new contract to Flow EVM testnet
+### ✅ Completed - Deployment
+- **Deployment**: ✅ Successfully deployed to Flow EVM testnet
+  - Contract Address: `0x700D1E5B9c66E58322f7aE6D154FcbB65165955b`
+  - Explorer: https://evm-testnet.flowscan.io/address/0x700D1E5B9c66E58322f7aE6D154FcbB65165955b
+
+### 🔄 Next Steps (Pending)
 - **Frontend Updates**: Update testnet escrow manager address and event ABI
 - **Backend Updates**: Update `createEscrow` signature and event parsing in `firebase_v2`
 - **Smoke Testing**: Verify functionality on testnet
-
-**Note**: Flow testnet is currently down for maintenance. Deployment and integration updates will proceed once testnet is available.
 
 ---
 
@@ -191,13 +193,16 @@ Add/modify tests to cover:
 - ✅ New tests added and existing ones updated accordingly
 - ✅ Test coverage includes all scenarios (A, B, C, D, E, G)
 
-3) 🔄 **Deploy new contract to Flow EVM testnet** - PENDING
-- ⏸️ **Status**: Waiting for Flow testnet to come back online (currently down for maintenance)
-- Use existing deployment script: `npm run deploy:dfs:testnet`
-- Record deployment details:
-  - new `DFSEscrowManager` address
-  - deploy tx hash
-- Confirm contract code on explorer if available
+3) ✅ **Deploy new contract to Flow EVM testnet** - COMPLETED
+- ✅ **Status**: Successfully deployed to Flow EVM Testnet
+- ✅ Deployment script executed: `npm run deploy:dfs:testnet`
+- ✅ Deployment details:
+  - **DFSEscrowManager address**: `0x700D1E5B9c66E58322f7aE6D154FcbB65165955b`
+  - **MockVaultFactory address**: `0x7832b3d3231b9de20e94Eb14671FfB98d86C39a7`
+  - **Deployer address**: `0xD7F0044096b602d017a8C4D7Be5dC33371f05ef5`
+  - **Network**: flowTestnet
+  - **Deployment tx hash**: (check explorer for transaction hash)
+- 🔗 **Explorer**: https://evm-testnet.flowscan.io/address/0x700D1E5B9c66E58322f7aE6D154FcbB65165955b
 
 4) 🔄 **Update configuration in downstream repos** - PENDING
 - `firebase_v2/`
@@ -253,13 +258,14 @@ Add/modify tests to cover:
 - [ ] Confirm deployment script is ready (`scripts/deploy_dfs_escrow_manager.ts`)
 
 ### Deployment
-- [ ] Run `npm run deploy:dfs:testnet`
-- [ ] Record new contract address: `_________________`
-- [ ] Record deployment tx hash: `_________________`
+- [x] Run `npm run deploy:dfs:testnet`
+- [x] Record new contract address: `0x700D1E5B9c66E58322f7aE6D154FcbB65165955b`
+- [ ] Record deployment tx hash: `_________________` (check explorer)
 - [ ] Verify contract on Flow EVM explorer
 
 ### Frontend Updates (`aiSports_frontEnd/`)
-- [ ] Update testnet escrow manager address in config
+- [ ] Update testnet escrow manager address in config:
+  - Set `NEXT_PUBLIC_EVM_ESCROW_ADDRESS_TESTNET=0x700D1E5B9c66E58322f7aE6D154FcbB65165955b`
 - [ ] Update `WinningsDistributed` event ABI if frontend parses events
 - [ ] Test frontend integration
 

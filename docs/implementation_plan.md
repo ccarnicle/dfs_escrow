@@ -318,7 +318,7 @@ NEXT_PUBLIC_RUN_TESTNET=true  # or false for mainnet
 NEXT_PUBLIC_EVM_ESCROW_ADDRESS=0x...  # mainnet address
 NEXT_PUBLIC_PYUSD_ADDRESS=0x99af3eea856556646c98c8b9b2548fe815240750
 
-NEXT_PUBLIC_EVM_ESCROW_ADDRESS_TESTNET=0x2408FF7abb137E94eC43043644CCb454aC7Ca043
+NEXT_PUBLIC_EVM_ESCROW_ADDRESS_TESTNET=0x700D1E5B9c66E58322f7aE6D154FcbB65165955b
 NEXT_PUBLIC_PYUSD_ADDRESS_TESTNET=0xd7d43ab7b365f0d0789aE83F4385fA710FfdC98F
 
 # Auth/profile collection (Option A: use dapperAuth even on testnet)
@@ -334,7 +334,7 @@ NEXT_PUBLIC_DISABLED_TESTNET_CONTEST_ENTRY=false
 
 - **Obtain** PYUSD0 from testnet contract (`0xd7d43ab7b365f0d0789aE83F4385fA710FfdC98F`)
   - Use `mint()` function or swap via liquidity pool
-- **Deploy** `DFSEscrowManager` (testnet address: `0x2408FF7abb137E94eC43043644CCb454aC7Ca043`)
+- **Deploy** `DFSEscrowManager` (testnet address: `0x700D1E5B9c66E58322f7aE6D154FcbB65165955b`)
 - **Create escrow** for a contest day (`paid_pyusd_1`)
 - **Join escrow** with:
   - 1 entry (sanity)
