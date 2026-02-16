@@ -12,7 +12,11 @@
     "deploy:flowMainnet": "hardhat run scripts/deploy.ts --network flowMainnet",
     "deploy:dfs:localhost": "hardhat run scripts/deploy_dfs_escrow_manager.ts --network localhost",
     "deploy:dfs:testnet": "hardhat run scripts/deploy_dfs_escrow_manager.ts --network flowTestnet",
-    "deploy:dfs:mainnet": "hardhat run scripts/deploy_dfs_escrow_manager.ts --network flowMainnet"
+    "deploy:dfs:mainnet": "hardhat run scripts/deploy_dfs_escrow_manager.ts --network flowMainnet",
+    "deploy:dfs:arbitrumSepolia": "hardhat run scripts/deploy_dfs_escrow_manager.ts --network arbitrumSepolia",
+    "deploy:dfs:baseSepolia": "hardhat run scripts/deploy_dfs_escrow_manager.ts --network baseSepolia",
+    "deploy:dfs:arbitrumOne": "hardhat run scripts/deploy_dfs_escrow_manager.ts --network arbitrumOne",
+    "deploy:dfs:base": "hardhat run scripts/deploy_dfs_escrow_manager.ts --network base"
   },
   "keywords": [
     "solidity",

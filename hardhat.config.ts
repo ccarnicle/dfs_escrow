@@ -26,12 +26,31 @@ const config: HardhatUserConfig = {
       chainId: 747,
       accounts: process.env.MAINNET_PRIVATE_KEY ? [process.env.MAINNET_PRIVATE_KEY] : [],
     },
+    arbitrumSepolia: {
+      url: 'https://sepolia-rollup.arbitrum.io/rpc',
+      chainId: 421614,
+      accounts: process.env.DEPLOYER_PRIVATE_KEY ? [process.env.DEPLOYER_PRIVATE_KEY] : [],
+    },
+    baseSepolia: {
+      url: 'https://sepolia.base.org',
+      chainId: 84532,
+      accounts: process.env.DEPLOYER_PRIVATE_KEY ? [process.env.DEPLOYER_PRIVATE_KEY] : [],
+    },
+    arbitrumOne: {
+      url: 'https://arb1.arbitrum.io/rpc',
+      chainId: 42161,
+      accounts: process.env.MAINNET_PRIVATE_KEY ? [process.env.MAINNET_PRIVATE_KEY] : [],
+    },
+    base: {
+      url: 'https://mainnet.base.org',
+      chainId: 8453,
+      accounts: process.env.MAINNET_PRIVATE_KEY ? [process.env.MAINNET_PRIVATE_KEY] : [],
+    },
   },
   etherscan: {
-    apiKey: {
-      flowTestnet: 'ANY_STRING',
-      flowMainnet: 'ANY_STRING',
-    },
+    // Single key = Etherscan API v2 (one key for all supported chains: Arbitrum, Base, etc.)
+    // Get from https://etherscan.io/myapikey
+    apiKey: process.env.ETHERSCAN_API_KEY || '',
     customChains: [
       {
         network: 'flowTestnet',
@@ -47,6 +66,22 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: 'https://evm.flowscan.io/api',
           browserURL: 'https://evm.flowscan.io/',
+        },
+      },
+      {
+        network: 'arbitrumSepolia',
+        chainId: 421614,
+        urls: {
+          apiURL: 'https://api-sepolia.arbiscan.io/api',
+          browserURL: 'https://sepolia.arbiscan.io/',
+        },
+      },
+      {
+        network: 'baseSepolia',
+        chainId: 84532,
+        urls: {
+          apiURL: 'https://api-sepolia.basescan.org/api',
+          browserURL: 'https://sepolia.basescan.org/',
         },
       },
     ],
