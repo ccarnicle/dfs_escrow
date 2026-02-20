@@ -1,18 +1,52 @@
-# aiSports EVM Escrow Contract
+# aiSports EVM Escrow Contracts
 
-This repository contains the smart contracts for managing PYUSD-based DFS contests on Flow EVM.
+Smart contracts for **stablecoin-based fantasy sports contests** across multiple EVM networks (starting with **Arbitrum Sepolia**), designed to be consumed by the broader aiSports app.
 
 ## Overview
 
-The `EscrowManager` contract manages the creation, participation, and payout of fantasy sports prize pools. It integrates with Yearn V3 Vaults for secure fund custody, where each escrow gets its own dedicated vault.
+The primary contract in this repo is **`DFSEscrowManager`** (`contracts/DFSEscrowManager.sol`). It manages:
 
-## Project Structure
+- **Escrow creation** for a contest (organizer/authorized creator)
+- **Joining** an escrow with **multi-entry** support (up to `maxEntriesPerUser`, default 1000)
+- **Pool top-ups** (sponsors/organizer can add funds)
+- **Payout distribution** after the contest ends (organizer-triggered)
+- **Overflow handling** (any surplus funds go to an overflow recipient; defaults to organizer)
+- **Authorized creators**: the owner can whitelist which addresses are allowed to create escrows
+
+Funds are custody’d inside a **Yearn-style ERC-4626 vault per escrow**. On testnets (and networks without an official factory), the deployment uses `MockVaultFactory` / `MockYearnVault`.
+
+> Note: `EscrowManager.sol` remains in the repo as an earlier version; `DFSEscrowManager.sol` is the DFS-specific, current contract.
+
+## What’s deployed
+
+### Arbitrum Sepolia (live)
+
+See `deployments/arbitrumSepolia.md` for the canonical addresses and verification commands.
+
+- **`DFSEscrowManager`**: `0x3819AC57110F008D491BBBba4fB14EcbFf45E5D0`
+- **`MockVaultFactory`**: `0x1dCE6e45eaf73B15E26139F365d4Bf622D69fff0`
+- **Official PYUSD (Arbitrum Sepolia)**: `0x637A1259C6afd7E3AdF63993cA7E58BB438aB1B1` (faucet-backed)
+
+To mint Arbitrum Sepolia PYUSD for testing, use the Paxos faucet at `https://faucet.paxos.com/`.
+
+## Supported networks (Hardhat)
+
+Configured in `hardhat.config.ts`:
+
+- **Flow EVM Testnet**: `flowTestnet` (chainId 545; explorer via FlowScan)
+- **Flow EVM Mainnet**: `flowMainnet` (chainId 747)
+- **Arbitrum Sepolia**: `arbitrumSepolia` (chainId 421614)
+- **Base Sepolia**: `baseSepolia` (chainId 84532)
+- **Mainnet placeholders**: `arbitrumOne` (42161), `base` (8453)
+
+## Project structure
 
 ```
 aiSports_evm_escrow/
 ├── contracts/
-│   ├── EscrowManager.sol          # Main escrow contract
-│   ├── MockToken.sol               # Mock ERC20 token for testing
+│   ├── DFSEscrowManager.sol            # Primary contract (DFS + PYUSD 6-decimals + multi-entry)
+│   ├── EscrowManager.sol               # Legacy contract
+│   ├── MockToken.sol                   # Mock ERC20 used for local/tests
 │   ├── interfaces/
 │   │   ├── IERC4626.sol
 │   │   ├── IVaultFactory.sol
@@ -21,68 +55,97 @@ aiSports_evm_escrow/
 │       ├── MockVaultFactory.sol
 │       └── MockYearnVault.sol
 ├── scripts/
-│   └── deploy.ts                   # Deployment script
+│   ├── deploy_dfs_escrow_manager.ts    # Deploy DFSEscrowManager (+ vault factory resolution)
+│   └── deploy.ts                       # Deploy legacy EscrowManager
+├── deployments/
+│   └── arbitrumSepolia.md              # Deployed addresses + verification commands
 ├── test/
-│   └── EscrowManager.ts           # Test suite
-├── docs/
-│   └── implementation_plan.md     # Implementation plan (to be created)
-└── hardhat.config.ts              # Hardhat configuration
-
+│   ├── DFSEscrowManager.ts
+│   └── EscrowManager.ts
+└── hardhat.config.ts
 ```
 
 ## Setup
 
-1. Install dependencies:
+Install:
+
 ```bash
 npm install
 ```
 
-2. Create a `.env` file in the root directory:
+Create `.env`:
+
 ```bash
-DEPLOYER_PRIVATE_KEY=your_testnet_private_key
-MAINNET_PRIVATE_KEY=your_mainnet_private_key
+# Used for testnets (flowTestnet, arbitrumSepolia, baseSepolia)
+DEPLOYER_PRIVATE_KEY=...
+
+# Used for mainnets/placeholders (flowMainnet, arbitrumOne, base)
+MAINNET_PRIVATE_KEY=...
+
+# Optional (contract verification). Hardhat is configured for Etherscan API v2.
+ETHERSCAN_API_KEY=...
 ```
 
-## Usage
+## Common commands
 
-### Compile Contracts
 ```bash
 npm run compile
-```
-
-### Run Tests
-```bash
 npm run test
+npm run node
 ```
 
-### Deploy to Localhost
+## Deploy
+
+### Deploy `DFSEscrowManager` (recommended)
+
+Local:
+
 ```bash
-npm run deploy:localhost
+npm run deploy:dfs:localhost
 ```
 
-### Deploy to Flow Testnet
+Flow:
+
+```bash
+npm run deploy:dfs:testnet
+npm run deploy:dfs:mainnet
+```
+
+Arbitrum / Base:
+
+```bash
+npm run deploy:dfs:arbitrumSepolia
+npm run deploy:dfs:baseSepolia
+
+# Placeholders (addresses TBD)
+npm run deploy:dfs:arbitrumOne
+npm run deploy:dfs:base
+```
+
+The deploy script prints the values you’ll want to paste into your frontend/backend env vars (for example `NEXT_PUBLIC_EVM_ESCROW_ADDRESS_ARB_SEPOLIA`).
+
+### Deploy legacy `EscrowManager`
+
 ```bash
 npm run deploy:flowTestnet
-```
-
-### Deploy to Flow Mainnet
-```bash
 npm run deploy:flowMainnet
 ```
 
-## Development
+## Verify contracts
 
-This contract is based on the example contract from the frontend repo (`aiSports_frontEnd/aiSports/docs/example_contract/`). 
+Arbitrum Sepolia verification commands are documented in `deployments/arbitrumSepolia.md`. Example:
 
-The contract will be updated in Phase 2.3 to support:
-- PYUSD (6 decimals instead of 18)
-- Multi-entry support (up to 1000 entries per user)
-- DFS contest semantics (daily contests, higher participant caps)
+```bash
+# DFSEscrowManager (constructor arg: vaultFactoryAddress)
+npx hardhat verify --network arbitrumSepolia <DFSEscrowManager_ADDRESS> <vaultFactoryAddress>
 
-## Networks
+# MockVaultFactory (no constructor args)
+npx hardhat verify --network arbitrumSepolia <MockVaultFactory_ADDRESS>
+```
 
-- **Flow Testnet**: Chain ID 545
-- **Flow Mainnet**: Chain ID 747
+## Integration notes (aiSports app)
+
+In the broader multi-chain aiSports system, each contest carries a `chain_network` (e.g. `"arbitrumSepolia"`, `"flowTestnet"`). The backend/frontend resolve the correct RPC + contract + token addresses from a per-network registry, so **multiple EVM networks can be supported at the same time**.
 
 ## License
 
