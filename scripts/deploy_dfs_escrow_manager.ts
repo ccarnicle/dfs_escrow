@@ -65,6 +65,11 @@ async function main() {
     console.log("\nFor frontend .env (Arbitrum Sepolia):");
     console.log(`NEXT_PUBLIC_EVM_ESCROW_ADDRESS_ARB_SEPOLIA=${dfsEscrowManagerAddress}`);
     console.log(`NEXT_PUBLIC_PYUSD_ADDRESS_ARB_SEPOLIA=0x637A1259C6afd7E3AdF63993cA7E58BB438aB1B1`);
+  } else if (network.name === 'baseSepolia') {
+    console.log("\nFor frontend .env (Base Sepolia):");
+    console.log(`NEXT_PUBLIC_EVM_ESCROW_ADDRESS_BASE_SEPOLIA=${dfsEscrowManagerAddress}`);
+    // Keep env var name aligned with existing frontend config key.
+    console.log(`NEXT_PUBLIC_PYUSD_ADDRESS_BASE_SEPOLIA=0x036CbD53842c5426634e7929541eC2318f3dCF7e`);
   } else {
     console.log("\nFor frontend .env.local file:");
     console.log(`NEXT_PUBLIC_EVM_ESCROW_ADDRESS_TESTNET=${dfsEscrowManagerAddress}`);
