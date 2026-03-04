@@ -170,3 +170,5 @@ Out of scope for this phase:
 - migrate lending integration behind an ERC-4626 wrapper/adapter for standardized vault abstraction
 - optional: support per-escrow vault wrappers to improve composability and analytics
 
+**Additional Notes**: The current `DFSEscrowManager` uses Yearn vaults (`IVaultFactory` + `IYearnVault`). For this Flow/MORE integration, we will **replace or bypass** the Yearn path with direct Pool calls. Yearn dependencies should be removed for this version of the contract. We should Keep the code for the original DFSEscrowManager in an old contract "DFSEscrowManager_Yearn.sol" or something similar.
+
